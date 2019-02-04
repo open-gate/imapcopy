@@ -2,40 +2,27 @@ package biz.opengate.imapCopy;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.Locale;
 import java.util.Stack;
 import java.util.TreeSet;
 
 import javax.mail.Address;
-import javax.mail.Flags;
-import javax.mail.Header;
 import javax.mail.Message;
 import javax.mail.MessagingException;
-import javax.mail.Flags.Flag;
+
 import javax.mail.Folder;
 
 public class Utilities {
-	
-	
 	public static boolean canHoldMessages(Folder folder) throws MessagingException {
-//		if (!"INBOX".equals(folder.getFullName())) return false;
 		return (folder.getType() & Folder.HOLDS_MESSAGES)!=0;
 	}
 
-	
-	
 	public static void pushAllChildren(Folder folder, Stack<Folder> stack) throws MessagingException {
 		Folder[] childFolders=folder.list();
 		for (Folder childFolder: childFolders) {
 			stack.push(childFolder);
 		}
 	}
-
-	
-	
-	
-	
 
 	/**https://www.iana.org/assignments/message-headers/message-headers.xhtml*/
 	public static String getMessageId(Message m) {
@@ -48,37 +35,6 @@ public class Utilities {
 		}
 	}
 
-
-	
-	
-	
-	public static void debugDump(Message m) throws MessagingException {
-		System.out.println("===============================================");
-		System.out.println("==	HEADERS");
-		Enumeration<Header> allHeaders = m.getAllHeaders();
-		while (allHeaders.hasMoreElements()) {
-			Header nextElement = allHeaders.nextElement();
-			System.out.println(noNewLine(nextElement.getName())+"        "+noNewLine(nextElement.getValue()));
-		}
-		System.out.println("===============================================");
-		Flags flags = m.getFlags();
-		System.out.println("===============================================");
-		System.out.println("==	SYSTEM FLAGS");
-		for (Flag f: flags.getSystemFlags()) {
-			System.out.println(f);
-		}
-		System.out.println("===============================================");
-		
-		System.out.println("===============================================");
-		System.out.println("==	USER FLAGS");
-		
-		for (String f: flags.getUserFlags()) {					
-			System.out.println(f);
-		}
-		System.out.println("===============================================");
-	}
-	
-	
 	public static <T extends Comparable<T>> T getFirstMatch(TreeSet<T> set, T key) {
 		if (!set.isEmpty()) {
 			T floor = set.floor(key);
@@ -121,31 +77,6 @@ public class Utilities {
 		return dateFormat.format(date);
 	}
 
-	
-	public static String noNewLine(String s) {
-		s=replace(s, "\n", "\\n");
-		s=replace(s, "\r", "\\r");
-		return s;
-	}
-	
-	
-	
-
-	public static String replace(String text, String pattern, String substitution) {
-		
-		int POSITION=0;
-
-		while (true) {
-			POSITION=text.indexOf(pattern,POSITION);
-			if (POSITION==-1) return text;
-
-			text=text.substring(0,POSITION)+substitution+text.substring(POSITION+pattern.length(),text.length());
-
-			POSITION=POSITION+substitution.length();
-		}
-	}
-
-
 	public static String cutTail(String s, String tail) {
 		if (s==null) return s;
 		if (s.endsWith(tail)) {
@@ -153,5 +84,4 @@ public class Utilities {
 		}
 		return s;
 	}
-
 }

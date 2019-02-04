@@ -2,6 +2,8 @@ package biz.opengate.imapCopy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Calendar;
@@ -15,17 +17,25 @@ import javax.mail.Folder;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
-import javax.mail.search.AndTerm;
-import javax.mail.search.SearchTerm;
+import javax.mail.search.ReceivedDateTerm;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.commons.mail.util.MimeMessageUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonIOException;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 
 public class ImapCopy {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,49 +45,89 @@ public class ImapCopy {
 
 	private JsonObject configuration;
 	private boolean verbose;
+	private Integer maxMessageAgeDays;
+	private File configurationFile;
 	private ImapConnection sourceConnection;
 	private ImapConnection destinationConnection;
 	private TreeSet<MessageMeta> sourceMessageSet=new TreeSet<MessageMeta>();
 	
-	public ImapCopy() throws Exception  {
+	public ImapCopy(String[] args) throws MessagingException, JsonIOException, JsonSyntaxException, FileNotFoundException {
+		parseArguments(args);
 		JsonParser parser = new JsonParser();
-		JsonElement jsonElement = parser.parse(new FileReader("configuration.json"));
+		JsonElement jsonElement = parser.parse(new FileReader(configurationFile));
 		configuration = jsonElement.getAsJsonObject();
-		verbose=configuration.get("verbose").getAsBoolean();
-		
-		if (verbose) {
-			logger.info("[thresholdDate:"+Utilities.formatDate(getThresholdDate())+"]");
-		}
-		
-		copyMessages();
 	}
 
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	UTILITIES
+	
+	private void parseArguments(String[] args) {
+        Options options = new Options();
+        
+        Option option = new Option("c", "config", true, "json configuration file");       
+        option.setRequired(true);
+        options.addOption(option);
+        
+        option = new Option("v", "verbose", false, "verbose output");
+        option.setRequired(false);
+        options.addOption(option);
 
-	private void copyMessages() throws Exception {
-		sourceConnection=new ImapConnection(configuration,"source");
-		destinationConnection=new ImapConnection(configuration,"destination");
+        option = new Option("d", "maxMessageAgeDays", true, "max day age of messages (if not set all messages will be parsed)");
+        option.setRequired(false);
+        options.addOption(option);
+        
+        CommandLineParser parser = new DefaultParser();
+        HelpFormatter formatter = new HelpFormatter();
+        CommandLine cmd;
+
+        try {
+            cmd = parser.parse(options, args);
+            
+            verbose=cmd.hasOption("verbose");
+            
+            if (cmd.hasOption("maxMessageAgeDays")) {
+            	maxMessageAgeDays=Integer.valueOf(cmd.getOptionValue("maxMessageAgeDays"));
+            }
+            
+            configurationFile=new File(cmd.getOptionValue("config"));
+            
+        	if (verbose) {
+    			logger.info("[arguments][verbose: "+verbose+"][maxMessageAgeDays: "+maxMessageAgeDays+"][configurationFile: "+configurationFile.getAbsolutePath()+"]");
+    		}
+        } 
+        catch (ParseException e) {
+            System.out.println(e.getMessage());
+            formatter.printHelp("imapCopy", options);
+            System.exit(1);
+        }
+	}
+	
+	public void doWork() throws MessagingException {
+		sourceConnection=null;
+		destinationConnection=null;
 				
 		try {
+			sourceConnection=new ImapConnection(configuration,"source");
+			destinationConnection=new ImapConnection(configuration,"destination");
 			sourceConnection.connect();
-			destinationConnection.connect();
-			
-			parseSource(sourceConnection.getRoot());
-			parseDestination(destinationConnection.getRoot());
-		
+			destinationConnection.connect();			
+			parseSource();
+			parseDestination();
+			logMatchingStatistics();
 			copyNonPresentMessages();
 		}
 		finally {
-			sourceConnection.disconnect();
-			destinationConnection.disconnect();
+			if (sourceConnection!=null) sourceConnection.disconnect();
+			if (destinationConnection!=null) destinationConnection.disconnect();
+			sourceConnection=null;
+			destinationConnection=null;
 		}
 	}
-	
-	private void parseSource(Folder root) throws Exception {
+
+	private void parseSource() throws MessagingException {
 		Stack<Folder> stack=new Stack<Folder>();
-		stack.push(root);
+		stack.push(sourceConnection.getRoot());
 				
 		while (!stack.isEmpty()) {
 			Folder folder=stack.pop();
@@ -90,18 +140,21 @@ public class ImapCopy {
 			///////////////////////////////////////////////////////////////////////
 			//	READ CHILD MESSAGES
 			if (Utilities.canHoldMessages(folder)) {
-				folder.open(Folder.READ_ONLY);
-				Message[] childMessages = folder.search(getSourceSearchTerm());
-				logger.info("[parseSource]["+folder.getFullName()+"]["+childMessages.length+" messages]");
-
-				for (Message childMessage: childMessages) {
-					MessageMeta mm=new MessageMeta(childMessage);
-					if (mm.getMessageId()!=null) {
-						sourceMessageSet.add(mm);	
+				try {
+					folder.open(Folder.READ_ONLY);
+					Message[] childMessages = getChildMessages(folder);
+					logger.info("[parseSource]["+folder.getFullName()+"]["+childMessages.length+" messages]");
+	
+					for (Message childMessage: childMessages) {
+						MessageMeta mm=new MessageMeta(childMessage);
+						if (mm.getMessageId()!=null) {
+							sourceMessageSet.add(mm);	
+						}
 					}
 				}
-				
-				folder.close();
+				finally {				
+					folder.close();
+				}
 			}
 			///////////////////////////////////////////////////////////////////////
 		}
@@ -111,63 +164,56 @@ public class ImapCopy {
 		if (verbose) {
 			for (MessageMeta meta: sourceMessageSet) {
 				meta.getMessage().getFolder().open(Folder.READ_ONLY);
-				logger.info("[parseSource]"+meta);
+				logger.info("[parseSource][messageFound]"+meta);
 				meta.getMessage().getFolder().close();
 			}
 		}
 	}
 	
-	private void parseDestination(Folder root) throws Exception {
+	private void parseDestination() throws MessagingException {
 		Stack<Folder> stack=new Stack<Folder>();
-		stack.push(root);
-		int matchingMessagesCount=0;
+		stack.push(destinationConnection.getRoot());
 		
 		while (!stack.isEmpty()) {
 			Folder folder=stack.pop();
 			if (verbose) {
 				logger.info("[parseDestination]["+folder.getFullName()+"]");
 			}
-			
 
-			
 			Utilities.pushAllChildren(folder,stack);
 
 			///////////////////////////////////////////////////////////////////////
 			//	READ CHILD MESSAGES
 			if (Utilities.canHoldMessages(folder)) {
-				folder.open(Folder.READ_ONLY);
-				Message[] childMessages = folder.search(getDestinationSearchTerm());
-
-				logger.info("[parseDestination]["+folder.getFullName()+"]["+childMessages.length+" messages]");
-
-				for (Message childMessage: childMessages) {
-					try {
-						MessageMeta key=new MessageMeta(childMessage);
-						if (key.getMessageId()==null) continue;
+				try {
+					folder.open(Folder.READ_ONLY);
+					Message[] childMessages = getChildMessages(folder);
+					logger.info("[parseDestination]["+folder.getFullName()+"]["+childMessages.length+" messages]");
+	
+					for (Message childMessage: childMessages) {
+						try {
+							MessageMeta key=new MessageMeta(childMessage);
+							if (key.getMessageId()==null) continue;
+							MessageMeta firstMatch = Utilities.getFirstMatch(sourceMessageSet, key);
 						
-						MessageMeta firstMatch = Utilities.getFirstMatch(sourceMessageSet, key);
-					
-						if (firstMatch!=null) {
-							firstMatch.setAlredyPresent(true);
-							matchingMessagesCount++;
+							if (firstMatch!=null) {
+								firstMatch.setAlredyPresent(true);
+							}
+						}
+						catch (Exception e) {
+							logger.log(Level.WARN,"[parseDestination]",e);
 						}
 					}
-					catch (Exception e) {
-						logger.log(Level.WARN,"[parseDestination]",e);
-					}
 				}
-				
-				folder.close();
+				finally {				
+					folder.close();
+				}
 			}
 			///////////////////////////////////////////////////////////////////////
 		}
-		
-		logger.info("[parseDestination]["+matchingMessagesCount+" matching messages found]");
 	}
 	
-	private void copyNonPresentMessages() throws Exception {
-		///////////////////////////////////////////////////////////////////////
-		//	COUNT PRESENT / MISSING MESSAGES
+	private void logMatchingStatistics() {
 		int presentMessagesCount=0;
 		for (MessageMeta m: sourceMessageSet) {
 			if (m.isAlredyPresent()) {
@@ -175,10 +221,10 @@ public class ImapCopy {
 			}
 		}
 		final int missingMessagesCount=sourceMessageSet.size()-presentMessagesCount;
-		
-		logger.info("[copyNonPresentMessages][total: "+sourceMessageSet.size()+"][present: "+presentMessagesCount+"][missing: "+missingMessagesCount+"]");
-		///////////////////////////////////////////////////////////////////////
-				
+		logger.info("[total: "+sourceMessageSet.size()+"][present: "+presentMessagesCount+"][missing: "+missingMessagesCount+"]");
+	}
+	
+	private void copyNonPresentMessages() {				
 		for (MessageMeta m: sourceMessageSet) {
 			try {
 				if (m.isAlredyPresent()) continue;
@@ -191,7 +237,7 @@ public class ImapCopy {
 		}
 	}
 	
-	private Folder getOrGeneratePath(MessageMeta messageMeta) throws Exception {
+	private Folder getOrGeneratePath(MessageMeta messageMeta) throws MessagingException {
 		List<Folder> fullPath = messageMeta.getFullPath();
 		Folder destinationFolder=destinationConnection.getRoot();
 		
@@ -205,7 +251,7 @@ public class ImapCopy {
 			boolean result=destinationFolder.create(Folder.READ_WRITE | Folder.HOLDS_FOLDERS | Folder.HOLDS_MESSAGES);
 			
 			if (!result) {
-				throw new Exception("[generatePath][unable to generate path: "+destinationFolder.getFullName()+"]");
+				throw new MessagingException("[generatePath][unable to generate path: "+destinationFolder.getFullName()+"]");
 			}
 		}
 		
@@ -250,68 +296,28 @@ public class ImapCopy {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	LOW LEVEL UTILITIES
 	
-	private SearchTerm getSourceSearchTerm() {
-//		return new ReceivedDateTerm(javax.mail.search.ComparisonTerm.GE,getThresholdDate());
-		return new MyReceivedDateSearchTerm(getThresholdDate());
-	}
-	
-	private SearchTerm getDestinationSearchTerm() {
-		//SearchTerm searchTerm1 = new ReceivedDateTerm(javax.mail.search.ComparisonTerm.GE,getThresholdDate());
-		SearchTerm searchTerm1 = new MyReceivedDateSearchTerm(getThresholdDate());
-		SearchTerm searchTerm2 = new MessageIdSearchTerm();
-		return new AndTerm(searchTerm1, searchTerm2);
-	}
-	
-	/**created this class because javax.mail.search.ReceivedDateTerm seems buggy*/
-	private class MyReceivedDateSearchTerm extends SearchTerm {
-		private static final long serialVersionUID = 1L;
-		private Date thresholdDate;
-		
-		MyReceivedDateSearchTerm(Date thresholdDate) {
-			this.thresholdDate=thresholdDate;
-		}
-
-		@Override
-		public boolean match(Message msg) {
-			try {			
-				Date date=msg.getReceivedDate();
-				final int c=date.compareTo(thresholdDate);
-				return c>=0;
-			}
-			catch (Exception e) {
-				//do nothing
-			}
-			
-			return false;
+	private Message[] getChildMessages(Folder folder) throws MessagingException {
+		if (maxMessageAgeDays==null) {
+			return folder.getMessages();
 		}
 		
-	}
-
-	private class MessageIdSearchTerm extends SearchTerm {
-		private static final long serialVersionUID = 1L;
-
-		@Override
-		public boolean match(Message msg) {
-			MessageMeta key=new MessageMeta(msg);
-			return sourceMessageSet.contains(key);
-		}
-	};
-		
-	private Date getThresholdDate() {
-		final int maxMessageAgeHours=configuration.get("maxMessageAgeHours").getAsInt();
-
 		Calendar gc=GregorianCalendar.getInstance();
-		gc.add(Calendar.HOUR_OF_DAY, -maxMessageAgeHours);
-		Date thresholdTime=gc.getTime();
-		return thresholdTime;
+		gc.add(Calendar.DAY_OF_MONTH,-maxMessageAgeDays);
+		Date thresholdDate=gc.getTime();
+		
+		ReceivedDateTerm term=new ReceivedDateTerm(javax.mail.search.ComparisonTerm.GE,thresholdDate);
+		return folder.search(term);
 	}
-	
+
     public static void main(String[] args) {
 		try {
-			new ImapCopy();	
+			logger.info("[imapCopy][start]");
+			ImapCopy imapCopy = new ImapCopy(args);
+			imapCopy.doWork();
+			logger.info("[imapCopy][done]");
 		}
 		catch (Exception e) {			
-			logger.log(Level.FATAL, "", e);
+			logger.log(Level.FATAL, "[imapCopy][errors]", e);
 		}
 	}
 }

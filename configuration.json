@@ -1,8 +1,5 @@
 {
-  "maxMessageAgeHours": 24,
-  "verbose": false,
-
-  "source": {
+   "source": {
     "configuration": {
       "mail.imap.user": "imapUser",
       "mail.imap.host": "imapHost",

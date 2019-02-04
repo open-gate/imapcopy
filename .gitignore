@@ -14,3 +14,5 @@ nbproject
 # Binaries
 target
 
+# Project specific
+program.log*

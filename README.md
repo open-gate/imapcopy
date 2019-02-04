@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Welcome to the home of ImapCopy!
 
 # Why use ImapCopier?
@@ -16,7 +15,3 @@ You can pull ImapCopy from the central maven repository, just add these to your 
 </dependency>
 ```
 
-=======
-# imapcopy
-Copy messages from one imap to another
->>>>>>> 991de8044c0281e079b4b8adc75d3a5f8c7111f3
