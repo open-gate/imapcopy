@@ -1,28 +1,61 @@
-package biz.opengate.imapCopy;
+package biz.opengate.imapCopy.model;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.mail.Folder;
 import javax.mail.Message;
 import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+
+import org.apache.commons.mail.util.MimeMessageUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import biz.opengate.imapCopy.ImapConnection;
+import biz.opengate.imapCopy.ImapCopy;
+import biz.opengate.imapCopy.Utilities;
 
 public class MessageMeta implements Comparable<MessageMeta> {
 	///////////////////////////////////////////////////////////////////////////////////////
-	//	DEFINITION	
+	//	DEFINITION
+	
+	private static final Logger logger = LogManager.getLogger();
 	
 	private Message message;
 	private String messageId;
-	private boolean alredyPresent;
 
 	public MessageMeta(Message message) {
 		this.message=message;
 		this.messageId=Utilities.getMessageId(message);
 	}
 
+	private MessageMeta(Message message, String messageId) {
+		this.message=message;
+		this.messageId=messageId;
+	}
+
 	
 	///////////////////////////////////////////////////////////////////////////////////////
 	//	UTILITIES	
+	
+	public MessageMeta clone(ImapConnection destinationConnection) throws MessagingException, IOException {
+		ByteArrayOutputStream baos=new ByteArrayOutputStream(1024);
+		getMessage().writeTo(baos);
+		
+		if (ImapCopy.DEBUG_LOG) {
+			logger.info("[clone]["+baos.toByteArray().length+" bytes]");
+		}
+		
+		ByteArrayInputStream bais=new ByteArrayInputStream(baos.toByteArray());
+		MimeMessage msg = MimeMessageUtils.createMimeMessage(destinationConnection.getSession(),bais);
+		msg.setHeader(Utilities.MESSAGE_ID_HEADER_NAME, getMessageId());
+		//msg.saveChanges();		//no
+		return new MessageMeta(msg,getMessageId());
+	}
 
 	@Override
 	public int hashCode() {
@@ -84,14 +117,6 @@ public class MessageMeta implements Comparable<MessageMeta> {
 		return result;
 	}
 
-	public boolean isAlredyPresent() {
-		return alredyPresent;
-	}
-
-	public void setAlredyPresent(boolean alredyPresent) {
-		this.alredyPresent = alredyPresent;
-	}
-	
 	public Message getMessage() {
 		return message;
 	}

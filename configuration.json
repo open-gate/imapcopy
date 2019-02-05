@@ -1,31 +1,21 @@
 {
-   "source": {
-    "configuration": {
-      "mail.imap.user": "imapUser",
-      "mail.imap.host": "imapHost",
-      "mail.imap.password": "imapPassword",
-      "sessionStore": "imaps"
-    },
-    "properties": {
-      "mail.store.protocol": "imaps",
-      "mail.imap.port": "993",
-      "mail.imap.starttls.enable": "true",
-      "mail.imap.starttls.required": "true"
-    }
+  "source": {
+  	"mail.imap.host": "imapHost",
+	"mail.imap.user": "imapUser",
+	"mail.imap.password": "imapPassword",
+	"mail.store.protocol": "imaps",
+	"mail.imap.port": "993",
+	"mail.imap.starttls.enable": "true",
+	"mail.imap.starttls.required": "true"
   },
   
   "destination": {
-    "configuration": {
-      "mail.imap.user": "imapUser",
-      "mail.imap.host": "imapHost",
-      "mail.imap.password": "imapPassword",
-      "sessionStore": "imaps"
-    },
-    "properties": {
-      "mail.store.protocol": "imaps",
-      "mail.imap.port": "993",
-      "mail.imap.starttls.enable": "true",
-      "mail.imap.starttls.required": "true"
-    }
+  	"mail.imap.host": "imapHost",
+	"mail.imap.user": "imapUser",
+	"mail.imap.password": "imapPassword",
+	"mail.store.protocol": "imaps",
+	"mail.imap.port": "993",
+	"mail.imap.starttls.enable": "true",
+	"mail.imap.starttls.required": "true"
   }
 }

@@ -1,6 +1,7 @@
 package biz.opengate.imapCopy;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Map.Entry;
@@ -39,24 +40,26 @@ public class ImapConnection {
 
 	public void connect() throws MessagingException {
 		Properties props = System.getProperties();
+		JsonObject connectionConfiguration=configuration.get(connectionName).getAsJsonObject();
 
 		///////////////////////////////////////////////////////////////////
 		//	READ THE CONFIGURATION
-		JsonObject storeConfiguration=configuration.get(connectionName).getAsJsonObject().get("configuration").getAsJsonObject();
-		final String host=storeConfiguration.get("mail.imap.host").getAsString();
-		final String username=storeConfiguration.get("mail.imap.user").getAsString();
-		final String password=storeConfiguration.get("mail.imap.password").getAsString();
-		final String sessionStore=storeConfiguration.get("sessionStore").getAsString();
+		final String host=connectionConfiguration.get("mail.imap.host").getAsString();
+		final String username=connectionConfiguration.get("mail.imap.user").getAsString();
+		final String password=connectionConfiguration.get("mail.imap.password").getAsString();
+		final String sessionStore=connectionConfiguration.get("mail.store.protocol").getAsString();
 		///////////////////////////////////////////////////////////////////
 		///////////////////////////////////////////////////////////////////
-		//	READ THE PROPERTIES
-		JsonObject storeProperties=configuration.get(connectionName).getAsJsonObject().get("properties").getAsJsonObject();
-		Set<Entry<String, JsonElement>> entrySet = storeProperties.entrySet();
+		//	READ THE PROPERTIES		
+		Set<Entry<String, JsonElement>> entrySet = connectionConfiguration.entrySet();
 		Iterator<Entry<String, JsonElement>> iterator = entrySet.iterator();
 		while (iterator.hasNext()) {
 			Entry<String, JsonElement> next = iterator.next();
 			props.put(next.getKey(),next.getValue().getAsString());
-			logger.info("["+connectionName+"][connect][propertyFound]["+next.getKey()+"]["+next.getValue().getAsString()+"]");
+			
+			if (ImapCopy.verbose) {
+				logger.info("["+connectionName+"][connect][propertyFound]["+next.getKey()+"]["+next.getValue().getAsString()+"]");
+			}
 		}
 		///////////////////////////////////////////////////////////////////
 
@@ -80,7 +83,27 @@ public class ImapConnection {
 		}
 	}
 
-	
+	public Folder getOrGeneratePath(List<Folder> fullPath) throws MessagingException {
+		Folder destinationFolder=getRoot();
+		
+		for (int i=1; i<fullPath.size(); i++) {
+			Folder sourceFolder=fullPath.get(i);
+			destinationFolder=destinationFolder.getFolder(sourceFolder.getName());
+		}
+		
+		if (!destinationFolder.exists()) {
+			logger.info("[getOrGeneratePath][generating: "+destinationFolder.getFullName()+"]");
+			boolean result=destinationFolder.create(Folder.READ_WRITE | Folder.HOLDS_FOLDERS | Folder.HOLDS_MESSAGES);
+			
+			if (!result) {
+				throw new MessagingException("[getOrGeneratePath][unable to generate path: "+destinationFolder.getFullName()+"]");
+			}
+		}
+		
+		return destinationFolder;
+	}
+
+
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	GETTERS / SETTERS
 

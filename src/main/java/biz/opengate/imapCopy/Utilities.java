@@ -13,6 +13,8 @@ import javax.mail.MessagingException;
 import javax.mail.Folder;
 
 public class Utilities {
+	public static final String MESSAGE_ID_HEADER_NAME="Message-ID";
+
 	public static boolean canHoldMessages(Folder folder) throws MessagingException {
 		return (folder.getType() & Folder.HOLDS_MESSAGES)!=0;
 	}
@@ -27,11 +29,18 @@ public class Utilities {
 	/**https://www.iana.org/assignments/message-headers/message-headers.xhtml*/
 	public static String getMessageId(Message m) {
 		try {
-			String[] header = m.getHeader("Message-ID");
+			String[] header = m.getHeader(MESSAGE_ID_HEADER_NAME);
 			return header[0];
 		}
 		catch (Exception e) {
 			return null;
+		}
+	}
+	
+	public static <T extends Comparable<T>> void remove(TreeSet<T> set, T key) {
+		T firstMatch = Utilities.getFirstMatch(set, key);
+		if (firstMatch!=null) {
+			set.remove(firstMatch);
 		}
 	}
 
