@@ -43,7 +43,7 @@ public class MessageMeta implements Comparable<MessageMeta> {
 	//	UTILITIES	
 	
 	public MessageMeta clone(ImapConnection destinationConnection) throws MessagingException, IOException {
-		ByteArrayOutputStream baos=new ByteArrayOutputStream(1024);
+		ByteArrayOutputStream baos=new ByteArrayOutputStream(ImapCopy.COPY_BUFFER_INITIAL_SIZE_BYTES);
 		getMessage().writeTo(baos);
 		
 		if (ImapCopy.DEBUG_LOG) {

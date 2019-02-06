@@ -46,6 +46,7 @@ public class ImapCopy {
 	
 	public static final boolean DEBUG_LOG=false;
 	private static final int DEFAULT_APPEND_BURST_SIZE=20;
+	public static final int COPY_BUFFER_INITIAL_SIZE_BYTES=10*1024;
 
 	public static boolean verbose;		
 	private Integer maxMessageAgeDays;
