@@ -1,12 +1,10 @@
-package biz.opengate.imapCopy.model;
+package biz.opengate.imapCopy.connector;
 
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.mail.Folder;
 
 public class MessageBag {
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -26,9 +24,8 @@ public class MessageBag {
 		return map.keySet();
 	}
 		
-	public void push(MessageMeta messageMeta) {
-		Folder folder = messageMeta.getMessage().getFolder();
-		FolderMeta key=new FolderMeta(folder);
+	public void push(MessageMeta messageMeta) throws Exception {
+		FolderMeta key=messageMeta.getFolderMeta();
 		push(key,messageMeta);
 	}
 	

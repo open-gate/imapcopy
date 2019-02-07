@@ -28,7 +28,19 @@
 	    <artifactId>gson</artifactId>
 	    <version>2.8.5</version>
 	</dependency>
-	    
+
+	<!-- https://mvnrepository.com/artifact/commons-cli/commons-cli -->
+	<dependency>
+	    <groupId>commons-cli</groupId>
+	    <artifactId>commons-cli</artifactId>
+	    <version>1.4</version>
+	</dependency>
+	
+	
+	
+	<!-- ///////////////////////////////////////////////////////////////////////////////////////////// -->
+	<!-- javax.mail dependencies -->
+		    
     <!-- https://mvnrepository.com/artifact/com.sun.mail/javax.mail -->
     <dependency>
     	<groupId>com.sun.mail</groupId>
@@ -49,12 +61,30 @@
 	    <artifactId>commons-email</artifactId>
 	    <version>1.5</version>
 	</dependency>
-	
-	<!-- https://mvnrepository.com/artifact/commons-cli/commons-cli -->
+	<!-- ///////////////////////////////////////////////////////////////////////////////////////////// -->
+	<!-- ///////////////////////////////////////////////////////////////////////////////////////////// -->
+	<!-- gmail.api dependencies -->
+
+	<!-- https://mvnrepository.com/artifact/com.google.api-client/google-api-client -->
 	<dependency>
-	    <groupId>commons-cli</groupId>
-	    <artifactId>commons-cli</artifactId>
-	    <version>1.4</version>
+	    <groupId>com.google.api-client</groupId>
+	    <artifactId>google-api-client</artifactId>
+	    <version>1.23.0</version>
 	</dependency>
+	
+	<!-- https://mvnrepository.com/artifact/com.google.apis/google-api-services-gmail -->
+	<dependency>
+	    <groupId>com.google.apis</groupId>
+	    <artifactId>google-api-services-gmail</artifactId>
+	    <version>v1-rev83-1.23.0</version>
+	</dependency>
+
+	<!-- https://mvnrepository.com/artifact/com.google.oauth-client/google-oauth-client-jetty -->
+	<dependency>
+	    <groupId>com.google.oauth-client</groupId>
+	    <artifactId>google-oauth-client-jetty</artifactId>
+	    <version>1.23.0</version>
+	</dependency>
+	<!-- ///////////////////////////////////////////////////////////////////////////////////////////// -->
   </dependencies>
 </project>

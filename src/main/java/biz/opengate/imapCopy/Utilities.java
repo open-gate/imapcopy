@@ -3,40 +3,26 @@ package biz.opengate.imapCopy;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.Stack;
 import java.util.TreeSet;
 
 import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 
-import javax.mail.Folder;
+import biz.opengate.imapCopy.connector.MessageBag;
+import biz.opengate.imapCopy.connector.MessageMeta;
 
 public class Utilities {
 	public static final String MESSAGE_ID_HEADER_NAME="Message-ID";
 
-	public static boolean canHoldMessages(Folder folder) throws MessagingException {
-		return (folder.getType() & Folder.HOLDS_MESSAGES)!=0;
+	public static MessageBag toMessageBag(TreeSet<MessageMeta> messageSet) throws Exception {
+		MessageBag bag=new MessageBag();		
+		for (MessageMeta m: messageSet) {
+			bag.push(m);
+		}
+		return bag;
 	}
 
-	public static void pushAllChildren(Folder folder, Stack<Folder> stack) throws MessagingException {
-		Folder[] childFolders=folder.list();
-		for (Folder childFolder: childFolders) {
-			stack.push(childFolder);
-		}
-	}
-
-	/**https://www.iana.org/assignments/message-headers/message-headers.xhtml*/
-	public static String getMessageId(Message m) {
-		try {
-			String[] header = m.getHeader(MESSAGE_ID_HEADER_NAME);
-			return header[0];
-		}
-		catch (Exception e) {
-			return null;
-		}
-	}
-	
 	public static <T extends Comparable<T>> void remove(TreeSet<T> set, T key) {
 		T firstMatch = Utilities.getFirstMatch(set, key);
 		if (firstMatch!=null) {

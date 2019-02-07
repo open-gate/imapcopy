@@ -4,18 +4,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Stack;
 import java.util.TreeSet;
 
-import javax.mail.Folder;
-import javax.mail.Message;
 import javax.mail.MessagingException;
-import javax.mail.search.ReceivedDateTerm;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -34,9 +26,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 
-import biz.opengate.imapCopy.model.FolderMeta;
-import biz.opengate.imapCopy.model.MessageBag;
-import biz.opengate.imapCopy.model.MessageMeta;
+import biz.opengate.imapCopy.connector.FolderMeta;
+import biz.opengate.imapCopy.connector.MailServerConnector;
+import biz.opengate.imapCopy.connector.MessageBag;
+import biz.opengate.imapCopy.connector.MessageMeta;
+import biz.opengate.imapCopy.connector.gmailApi.GmailApiConnector;
+import biz.opengate.imapCopy.connector.javaxMail.JavaxMailConnector;
 
 public class ImapCopy {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,19 +39,15 @@ public class ImapCopy {
 
 	private static final Logger logger = LogManager.getLogger();
 	
-	public static final boolean DEBUG_LOG=false;
-	private static final int DEFAULT_APPEND_BURST_SIZE=20;
 	public static final int COPY_BUFFER_INITIAL_SIZE_BYTES=10*1024;
 
-	public static boolean verbose;		
+	private static boolean verbose;		
 	private Integer maxMessageAgeDays;
-	private int appendBurstSize=DEFAULT_APPEND_BURST_SIZE;
 	private File configurationFile;
 	private JsonObject configuration;
-	private ImapConnection sourceConnection;
-	private ImapConnection destinationConnection;
-	private TreeSet<MessageMeta> sourceMessageSet=new TreeSet<MessageMeta>();
-		
+	private MailServerConnector sourceConnection;
+	private MailServerConnector destinationConnection;
+			
 	public ImapCopy(String[] args) throws MessagingException, JsonIOException, JsonSyntaxException, FileNotFoundException {
 		parseArguments(args);
 		JsonParser parser = new JsonParser();
@@ -84,10 +75,6 @@ public class ImapCopy {
             option.setRequired(false);
             options.addOption(option);
 
-            option = new Option("b", "appendBurstSize", true, "max number of messages to append to the destination IMAP at a single time (default 20)");
-            option.setRequired(false);
-            options.addOption(option);
-           
         	CommandLineParser parser = new DefaultParser();
         	CommandLine cmd = parser.parse(options, args);
             
@@ -97,14 +84,10 @@ public class ImapCopy {
             	maxMessageAgeDays=Integer.valueOf(cmd.getOptionValue("maxMessageAgeDays"));
             }
             
-            if (cmd.hasOption("appendBurstSize")) {
-            	appendBurstSize=Integer.valueOf(cmd.getOptionValue("appendBurstSize"));
-            }
-            
             configurationFile=new File(cmd.getOptionValue("config"));
             
         	if (verbose) {
-    			logger.info("[arguments][verbose: "+verbose+"][maxMessageAgeDays: "+maxMessageAgeDays+"][appendBurstSize: "+appendBurstSize+"][configurationFile: "+configurationFile.getAbsolutePath()+"]");
+    			logger.info("[arguments][verbose: "+verbose+"][maxMessageAgeDays: "+maxMessageAgeDays+"][configurationFile: "+configurationFile.getAbsolutePath()+"]");
     		}
         } 
         catch (ParseException e) {
@@ -115,234 +98,104 @@ public class ImapCopy {
         }
 	}
 	
-	public void doWork() throws MessagingException {
-		sourceConnection=new ImapConnection(configuration,"source");
-		destinationConnection=new ImapConnection(configuration,"destination");
+	public void doWork() throws Exception {		
+		sourceConnection=getConnector("source");
+		destinationConnection=getConnector("destination");
+		
+		///////////////////////////////////////////////////////////////////////
+		//	READ THE SOURCE
+		TreeSet<MessageMeta> messageSet=null;
 		
 		try {
+			logger.info("[doWork][getting source messages]");
 			sourceConnection.connect();
-			parseSource();
+			messageSet=sourceConnection.getMessages(maxMessageAgeDays);
+			logger.info("[doWork]["+messageSet.size()+" messages found in source account]");
 		}
 		finally {
 			sourceConnection.disconnect();
 		}
-		
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+		//	READ THE DESTINATION
 		try {
+			logger.info("[doWork][getting destination messages]");
 			destinationConnection.connect();
-			parseDestination();
+			destinationConnection.removePresentMessages(maxMessageAgeDays, messageSet);
+			logger.info("["+messageSet.size()+" messages to copy to destination account]");
 		}
 		finally {
 			destinationConnection.disconnect();
 		}
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+		//	GENERATE DESTINATION FOLDERS
+		MessageBag messageBag=Utilities.toMessageBag(messageSet);
+		try {
+			logger.info("[doWork][generating destination folders]");
+			
+			destinationConnection.connect();
+			for (FolderMeta folder: messageBag.keySet()) {
+				destinationConnection.generatePathIfInexistent(folder.getPathList());
+			}
+		}
+		finally {
+			destinationConnection.disconnect();
+		}
+		///////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////
+		//	APPEND MESSAGES
+		logger.info("[doWork][appending messages]");
+		
+		for (FolderMeta folder: messageBag.keySet()) {
+			appendMessages(folder, messageBag.get(folder));
+		}
+		///////////////////////////////////////////////////////////////////////
+	}
 
+	private void appendMessages(FolderMeta sourceFolder, List<MessageMeta> sourceMessageList) throws Exception {
 		try {
 			sourceConnection.connect();
 			destinationConnection.connect();
-			prepareAndAppendMessages();			
-		}
-		finally {
-			sourceConnection.disconnect();
-			destinationConnection.disconnect();
-		}
-	}
 
-	private void parseSource() throws MessagingException {
-		Stack<Folder> stack=new Stack<Folder>();
-		stack.push(sourceConnection.getRoot());
-				
-		while (!stack.isEmpty()) {
-			Folder folder=stack.pop();
-			if (verbose) {
-				logger.info("[parseSource]["+folder.getFullName()+"]");
-			}
+			FolderMeta destinationFolderMeta = destinationConnection.getFolder(sourceFolder.getPathList());
+			logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+sourceMessageList.size()+" messages]");
 			
-			Utilities.pushAllChildren(folder,stack);
-			
-			///////////////////////////////////////////////////////////////////////
-			//	READ CHILD MESSAGES
-			if (Utilities.canHoldMessages(folder)) {
+			for (MessageMeta sourceMessageMeta: sourceMessageList) {
 				try {
-					folder.open(Folder.READ_ONLY);
-					Message[] childMessages = getChildMessages(folder);
-					logger.info("[parseSource]["+folder.getFullName()+"]["+childMessages.length+" messages]");
-	
-					for (Message childMessage: childMessages) {
-						MessageMeta mm=new MessageMeta(childMessage);
-						if (mm.getMessageId()!=null) {
-							sourceMessageSet.add(mm);
-							if (DEBUG_LOG) {
-								logger.info("[parseSource][messageFound]"+mm);
-							}
-						}
-					}
-				}
-				finally {				
-					folder.close();
-				}
-			}
-			///////////////////////////////////////////////////////////////////////
-		}
-		
-		logger.info("[parseSource]["+sourceMessageSet.size()+" messages found]");
-	}
-	
-	private void parseDestination() throws MessagingException {
-		Stack<Folder> stack=new Stack<Folder>();
-		stack.push(destinationConnection.getRoot());
-		
-		while (!stack.isEmpty()) {
-			Folder folder=stack.pop();
-			if (verbose) {
-				logger.info("[parseDestination]["+folder.getFullName()+"]");
-			}
-
-			Utilities.pushAllChildren(folder,stack);
-
-			///////////////////////////////////////////////////////////////////////
-			//	READ CHILD MESSAGES
-			if (Utilities.canHoldMessages(folder)) {
-				try {
-					folder.open(Folder.READ_ONLY);
-					Message[] childMessages = getChildMessages(folder);
-					logger.info("[parseDestination]["+folder.getFullName()+"]["+childMessages.length+" messages]");
-	
-					for (Message childMessage: childMessages) {
-						try {
-							MessageMeta key=new MessageMeta(childMessage);
-							if (key.getMessageId()==null) continue;
-							Utilities.remove(sourceMessageSet, key);
-						}
-						catch (Exception e) {
-							logger.log(Level.WARN,"[parseDestination]",e);
-						}
-					}
-				}
-				finally {				
-					folder.close();
-				}
-			}
-			///////////////////////////////////////////////////////////////////////
-		}
-		
-		logger.info("[parseDestination]["+sourceMessageSet.size()+" messages to copy]");
-	}
-	
-	private void prepareAndAppendMessages() {
-		MessageBag bag=new MessageBag();		
-		for (MessageMeta m: sourceMessageSet) {
-			bag.push(m);
-		}
-
-		for (FolderMeta key: bag.keySet()) {
-			prepareAndAppendMessages(bag.get(key));
-		}
-	}
-	
-	private void prepareAndAppendMessages(List<MessageMeta> sourceMessageList) {
-		///////////////////////////////////////////////////////////////////////
-		//	CONSISTENCY CHECKS
-		if (sourceMessageList==null || sourceMessageList.isEmpty()) {
-			return;
-		}
-		///////////////////////////////////////////////////////////////////////
-		///////////////////////////////////////////////////////////////////////
-		//	PREPARE THE DESTINATION FOLDER
-		final FolderMeta destinationFolderMeta;
-		
-		try {
-			final Folder destinationFolder=destinationConnection.getOrGeneratePath(sourceMessageList.get(0).getFullPath());
-			destinationFolderMeta=new FolderMeta(destinationFolder);
-		}
-		catch (MessagingException e) {
-			logger.log(Level.WARN,"unable to generate remote path",e);
-			return;
-		}
-		///////////////////////////////////////////////////////////////////////
-				
-		List<MessageMeta> destinationMessageList=new LinkedList<MessageMeta>();
-		Folder sourceFolder=null;
-
-		try {
-			///////////////////////////////////////////////////////////////////
-			//	OPEN THE SOURCE FOLDER. NOTE: IF THIS OPERATION FAILS THE 
-			//	WHOLE LIST OF MESSAGES IS IGNORED 
-			sourceFolder=sourceMessageList.get(0).getMessage().getFolder();
-			sourceFolder.open(Folder.READ_ONLY);
-			logger.info("[prepareMessages]["+sourceFolder.getFullName()+"]["+sourceMessageList.size()+" messages]");
-			///////////////////////////////////////////////////////////////////
-			
-			int index=0;			
-			for (MessageMeta messageMeta: sourceMessageList) {
-				///////////////////////////////////////////////////////////////
-				//	PREPARE A CLONED MESSAGE. NOTE: FAILURE ON THIS OPERATION
-				//	ONLY AFFECT THIS MESSAGE
-				index++;
-				
-				final MessageMeta destinationMessage;
-				try {
-					destinationMessage=messageMeta.clone(destinationConnection);
-					if (verbose) {
-						logger.info("[prepareMessages]["+sourceFolder.getFullName()+": "+index+"/"+sourceMessageList.size()+"]["+messageMeta.getMessageId()+"]");
-					}
+					byte[] raw = sourceConnection.getRawMessage(sourceMessageMeta);
+					destinationConnection.appendRawMessage(raw, destinationFolderMeta, sourceMessageMeta.getMessageId());
 				}
 				catch (MessagingException | IOException e) {
-					logger.log(Level.WARN, "[prepareMessages][exception]",e);
+					logger.log(Level.WARN, "[appendMessages][exception]",e);
 					continue;
 				}
-				///////////////////////////////////////////////////////////////
-				///////////////////////////////////////////////////////////////
-				//	ENQUEUE AND SEND UP TO APPEND_BURST_SIZE MESSAGES
-				destinationMessageList.add(destinationMessage);
-				
-				if (destinationMessageList.size()>=appendBurstSize) {
-					appendMessagesToDestination(destinationFolderMeta, destinationMessageList);
-					destinationMessageList.clear();
-				}
-				///////////////////////////////////////////////////////////////
-			}
-
-			///////////////////////////////////////////////////////////////////
-			//	SEND THE REMAINING MESSAGES
-			appendMessagesToDestination(destinationFolderMeta, destinationMessageList);
-			///////////////////////////////////////////////////////////////////
-		}
-		catch (Exception e) {
-			logger.log(Level.WARN, "[prepareMessages][exception]",e);
-		}
-		finally {
-			if (sourceFolder!=null) {
-				try {sourceFolder.close();} catch (Exception e) {}		
 			}
 		}
-	}
-	
-	private void appendMessagesToDestination(FolderMeta destinationFolderMeta, List<MessageMeta> destinationMessageList) {
-		try {
-			if (destinationMessageList.isEmpty()) return;
-			logger.info("[appendMessagesToDestination]["+destinationFolderMeta.getCompletePath()+"]["+destinationMessageList.size()+" messages]");
-			destinationFolderMeta.appendMessages(destinationMessageList);
+		finally {			
+			sourceConnection.disconnect();
+			destinationConnection.disconnect();
 		}
-		catch (Exception e) {
-			logger.log(Level.WARN, "[prepareMessages][exception]",e);
-		}		
 	}
 
+	private MailServerConnector getConnector(String connectionName) {
+		final JsonObject connectionConfiguration=configuration.get(connectionName).getAsJsonObject();
+		final String connectorClass=connectionConfiguration.get("connectorClass").getAsString();
+
+		if ("JavaxMailConnection".equals(connectorClass)) {
+			return new JavaxMailConnector(connectionName,connectionConfiguration);
+		}
+		
+		if ("GmailApiConnection".equals(connectorClass)) {
+			return new GmailApiConnector(connectionName,connectionConfiguration);
+		}
+
+		throw new RuntimeException("unknown connector class: '"+connectorClass+"'");
+	}
 	
+
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	//	LOW LEVEL UTILITIES
-	
-	private Message[] getChildMessages(Folder folder) throws MessagingException {
-		if (maxMessageAgeDays==null) {
-			return folder.getMessages();
-		}
-		
-		Calendar gc=GregorianCalendar.getInstance();
-		gc.add(Calendar.DAY_OF_MONTH,-maxMessageAgeDays);
-		Date thresholdDate=gc.getTime();
-		
-		ReceivedDateTerm term=new ReceivedDateTerm(javax.mail.search.ComparisonTerm.GE,thresholdDate);
-		return folder.search(term);
-	}
+	//	STATIC PART
 
     public static void main(String[] args) {
 		try {
@@ -357,4 +210,8 @@ public class ImapCopy {
 			logger.log(Level.FATAL, "[imapCopy][errors]", e);
 		}
 	}
+    
+    public static boolean isVerbose() {
+    	return verbose;
+    }
 }

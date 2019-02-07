@@ -1,42 +1,17 @@
-package biz.opengate.imapCopy.model;
+package biz.opengate.imapCopy.connector;
 
 import java.util.List;
 
-import javax.mail.Folder;
-import javax.mail.Message;
-import javax.mail.MessagingException;
-
-public class FolderMeta implements Comparable<FolderMeta> {
+public abstract class FolderMeta implements Comparable<FolderMeta> {
 	///////////////////////////////////////////////////////////////////////////////////////
 	//	DEFINITION	
 
-	private Folder folder;
 	private String completePath;
+	private List<String> pathList;
 
-	public FolderMeta(Folder folder) {
-		this.folder=folder;
-		this.completePath=folder.getFullName();
-	}
 	
-
 	///////////////////////////////////////////////////////////////////////////////////////
 	//	UTILITIES
-
-	/**convert the messages list into an array and append it to the destination imap*/
-	public void appendMessages(List<MessageMeta> messageList) throws MessagingException {
-		try {				
-			getFolder().open(Folder.READ_WRITE);
-			Message[] messageArray=new Message[messageList.size()];
-			int index=0;
-			for (MessageMeta messageMeta: messageList) {					
-				messageArray[index++]=messageMeta.getMessage();
-			}
-			getFolder().appendMessages(messageArray);
-		}
-		finally {
-			getFolder().close();
-		}
-	}
 	
 	@Override
 	public int compareTo(FolderMeta o) {
@@ -72,20 +47,20 @@ public class FolderMeta implements Comparable<FolderMeta> {
 
 	///////////////////////////////////////////////////////////////////////////////////////
 	//	GETTERS / SETTERS
-	
-	public Folder getFolder() {
-		return folder;
-	}
 
-	public void setFolder(Folder folder) {
-		this.folder = folder;
-	}
-	
 	public String getCompletePath() {
 		return completePath;
 	}
 	
 	public void setCompletePath(String completePath) {
 		this.completePath = completePath;
+	}
+
+	public List<String> getPathList() {
+		return pathList;
+	}
+
+	public void setPathList(List<String> pathList) {
+		this.pathList = pathList;
 	}
 }
