@@ -2,10 +2,11 @@
 <Configuration status="WARN">
 	<Appenders>
 		<Console name="Console"	target="SYSTEM_OUT">
-			<PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%t] (%c:%L) %msg%n"/>
+			<PatternLayout pattern="%msg%n"/>
         	<ThresholdFilter level="INFO" onMatch="ACCEPT"/>
 		</Console>
  
+ <!-- 
 		<RollingFile 
 			name="RollingFile" 
 			filename="program.log"
@@ -18,11 +19,14 @@
 				<TimeBasedTriggeringPolicy interval="1" modulate="true"/>
 			</Policies>
 		</RollingFile>
- 
+ --> 
 	</Appenders>
 	<Loggers>
 		<Root level="info">
+<!-- 
 			<AppenderRef ref="RollingFile"/>
+ -->			
+			
 			<AppenderRef ref="Console"/>
 		</Root>
 	</Loggers>

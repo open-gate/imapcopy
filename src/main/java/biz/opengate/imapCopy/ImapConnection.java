@@ -63,12 +63,16 @@ public class ImapConnection {
 		}
 		///////////////////////////////////////////////////////////////////
 
-		logger.info("["+connectionName+"][connect][preparingSession]");
+		if (ImapCopy.verbose) {
+			logger.info("["+connectionName+"][connect][preparingSession]");
+		}
 		session = Session.getDefaultInstance(props, null);
 		store = session.getStore(sessionStore);
 		logger.info("["+connectionName+"][connect][connecting]["+host+"]["+username+"]");
 		store.connect(host,username,password);
-		logger.info("["+connectionName+"][connect][connected]");
+		if (ImapCopy.verbose) {
+			logger.info("["+connectionName+"][connect][connected]");
+		}
 	}
 	
 	public void disconnect() {
@@ -76,7 +80,9 @@ public class ImapConnection {
 			if (store==null) return;
 			store.close();
 			store=null;
-			logger.info("["+connectionName+"][disconnect][disconnected]");
+			if (ImapCopy.verbose) {
+				logger.info("["+connectionName+"][disconnect][disconnected]");
+			}
 		}
 		catch (Exception e) {
 			logger.log(Level.WARN,"["+connectionName+"][disconnect]",e);

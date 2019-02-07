@@ -116,24 +116,33 @@ public class ImapCopy {
 	}
 	
 	public void doWork() throws MessagingException {
-		sourceConnection=null;
-		destinationConnection=null;
-				
+		sourceConnection=new ImapConnection(configuration,"source");
+		destinationConnection=new ImapConnection(configuration,"destination");
+		
 		try {
-			sourceConnection=new ImapConnection(configuration,"source");
-			destinationConnection=new ImapConnection(configuration,"destination");
+			sourceConnection.connect();
+			parseSource();
+		}
+		finally {
+			sourceConnection.disconnect();
+		}
+		
+		try {
+			destinationConnection.connect();
+			parseDestination();
+		}
+		finally {
+			destinationConnection.disconnect();
+		}
+
+		try {
 			sourceConnection.connect();
 			destinationConnection.connect();
-			
-			parseSource();
-			parseDestination();
 			prepareAndAppendMessages();			
 		}
 		finally {
-			if (sourceConnection!=null) sourceConnection.disconnect();
-			if (destinationConnection!=null) destinationConnection.disconnect();
-			sourceConnection=null;
-			destinationConnection=null;
+			sourceConnection.disconnect();
+			destinationConnection.disconnect();
 		}
 	}
 
