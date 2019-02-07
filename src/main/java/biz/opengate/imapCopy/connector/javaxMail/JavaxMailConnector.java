@@ -209,6 +209,8 @@ public class JavaxMailConnector extends MailServerConnector {
 
 	@Override
 	public byte[] getRawMessage(MessageMeta messageMeta) throws IOException, MessagingException {
+		logger.debug("[getRawMessage] "+messageMeta.getMessageId());
+		
 		JavaxMailMessageMeta casted=(JavaxMailMessageMeta) messageMeta;
 		Folder folder=casted.getMessage().getFolder();
 		

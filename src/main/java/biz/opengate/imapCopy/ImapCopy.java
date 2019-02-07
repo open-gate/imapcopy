@@ -107,10 +107,10 @@ public class ImapCopy {
 		TreeSet<MessageMeta> messageSet=null;
 		
 		try {
-			logger.info("[doWork][getting source messages]");
+			logger.info("[imapCopy][getting source messages]");
 			sourceConnection.connect();
 			messageSet=sourceConnection.getMessages(maxMessageAgeDays);
-			logger.info("[doWork]["+messageSet.size()+" messages found in source account]");
+			logger.info("[imapCopy]["+messageSet.size()+" messages found in source account]");
 		}
 		finally {
 			sourceConnection.disconnect();
@@ -119,10 +119,10 @@ public class ImapCopy {
 		///////////////////////////////////////////////////////////////////////
 		//	READ THE DESTINATION
 		try {
-			logger.info("[doWork][getting destination messages]");
+			logger.info("[imapCopy][removing messages present in destination]");
 			destinationConnection.connect();
 			destinationConnection.removePresentMessages(maxMessageAgeDays, messageSet);
-			logger.info("["+messageSet.size()+" messages to copy to destination account]");
+			logger.info("[imapCopy]["+messageSet.size()+" messages to copy to destination account]");
 		}
 		finally {
 			destinationConnection.disconnect();
@@ -132,7 +132,7 @@ public class ImapCopy {
 		//	GENERATE DESTINATION FOLDERS
 		MessageBag messageBag=Utilities.toMessageBag(messageSet);
 		try {
-			logger.info("[doWork][generating destination folders]");
+			logger.info("[imapCopy][generating destination folders]");
 			
 			destinationConnection.connect();
 			for (FolderMeta folder: messageBag.keySet()) {
@@ -145,7 +145,7 @@ public class ImapCopy {
 		///////////////////////////////////////////////////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		//	APPEND MESSAGES
-		logger.info("[doWork][appending messages]");
+		logger.info("[imapCopy][appending messages]");
 		
 		for (FolderMeta folder: messageBag.keySet()) {
 			appendMessages(folder, messageBag.get(folder));

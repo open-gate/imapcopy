@@ -1,7 +1,5 @@
 package biz.opengate.imapCopy.connector.gmailApi;
 
-import com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64;
-
 import java.util.List;
 import java.util.TreeSet;
 
@@ -83,11 +81,14 @@ public class GmailApiConnector extends MailServerConnector {
         GoogleCredential googleCredentials = builder.build();		
 		
 	    service = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, googleCredentials).setApplicationName(APPLICATION_NAME).build();
+
+	    logger.info("["+getConnectionName()+"][connect][connecting][gmailApi]["+userName+"]");
 	}
 
 	@Override
 	public void disconnect() {
 		service=null;
+		logger.info("["+getConnectionName()+"][disconnect][disconnected]");
 	}
 
 	@Override
@@ -107,14 +108,24 @@ public class GmailApiConnector extends MailServerConnector {
 
 	@Override
 	public void removePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws Exception {
+		final int total=messageSet.size();
+		int index=0;
+		int removed=0;
+
 		Iterator<MessageMeta> iterator = messageSet.iterator();
 		
 		while (iterator.hasNext()) {
+			index++;
+			if (index%100==0) {
+				logger.info("[removePresentMessages]["+index+"/"+total+"]["+removed+" removed]");
+			}
+
 			MessageMeta meta = iterator.next();
 			final String messageId=meta.getMessageId();
 			
 			if (checkMessageByMessageId(messageId)) {
 				iterator.remove();
+				removed++;
 			}
 		}
 	}
@@ -160,9 +171,8 @@ public class GmailApiConnector extends MailServerConnector {
 	@Override
 	public void appendRawMessage(byte[] raw, FolderMeta destinationFolderMeta, String messageId) throws Exception {
 		GmailApiFolderMeta casted=(GmailApiFolderMeta) destinationFolderMeta;
-		String encodedEmail=Base64.encodeBase64URLSafeString(raw);
 		Message message = new Message();
-		message.setRaw(encodedEmail);
+		message.encodeRaw(raw);
 		message.setLabelIds(Arrays.asList(casted.getLabel().getId()));
 	    message = service.users().messages().insert("me", message).execute();
 	}
