@@ -254,11 +254,16 @@ public class JavaxMailConnector extends MailServerConnector {
 		
 		throw new UnsupportedOperationException();
 	}
-
+	
+	public void deleteMessage(String messageId) throws Exception {
+		throw new UnsupportedOperationException();
+	}
+	
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	PRIVATE UTILITIES
 	
+	@SuppressWarnings("unused")
 	private void debugLogMessage(JavaxMailMessageMeta messageMeta) throws MessagingException {
 		Message msg=messageMeta.getMessage();
 		msg.getFolder().open(Folder.READ_ONLY);

@@ -208,6 +208,22 @@ public class GmailApiConnector extends MailServerConnector {
 			.setInternalDateSource("dateHeader")
 			.execute();
 	}
+	
+	public void deleteMessage(String mimeMessageId) throws Exception {
+		logger.debug("[deleteMessage][mimeMessageId: "+mimeMessageId+"]");
+		final String query="rfc822msgid:"+mimeMessageId;
+		ListMessagesResponse response = service.users().messages().list("me").setQ(query).execute();
+		List<Message> messages = response.getMessages();
+		if ((messages==null) || (messages.isEmpty())) {
+			logger.debug("[deleteMessage][notPresent]");
+			return;
+		}
+		String googleMessageId = messages.get(0).getId();
+		logger.debug("[deleteMessage][googleMessageId: "+googleMessageId+"]");
+		service.users().messages().delete("me", googleMessageId).execute();
+		logger.debug("[deleteMessage][deleted]");
+	}
+
 
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -215,6 +231,7 @@ public class GmailApiConnector extends MailServerConnector {
 	
 	//rfc822msgid:<CADSQLDkcJyLxjNE_sCopER2TE5f6vYcogZ598aq+OYiX4i-72A@mail.gmail.com>
 	//rfc822msgid:<20190207041202.CF09A64F036@wh-quarantine-bkmail-1.welcomeitalia.it>
+	@SuppressWarnings("unused")
 	private void downloadAndPrintSingleMessage() throws IOException {
 		List<GmailApiMessageMeta> list=listMessagesMatchingQuery("rfc822msgid:<20190207041202.CF09A64F036@wh-quarantine-bkmail-1.welcomeitalia.it>");
 		debugLogMessage(list.get(0));
