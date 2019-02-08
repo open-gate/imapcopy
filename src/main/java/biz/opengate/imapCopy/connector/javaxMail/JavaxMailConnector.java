@@ -1,6 +1,5 @@
 package biz.opengate.imapCopy.connector.javaxMail;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Calendar;
@@ -19,10 +18,8 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.Store;
-import javax.mail.internet.MimeMessage;
 import javax.mail.search.ReceivedDateTerm;
 
-import org.apache.commons.mail.util.MimeMessageUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -35,6 +32,7 @@ import biz.opengate.imapCopy.Utilities;
 import biz.opengate.imapCopy.connector.FolderMeta;
 import biz.opengate.imapCopy.connector.MailServerConnector;
 import biz.opengate.imapCopy.connector.MessageMeta;
+import biz.opengate.imapCopy.connector.RawMessage;
 
 public class JavaxMailConnector extends MailServerConnector {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +210,7 @@ public class JavaxMailConnector extends MailServerConnector {
 	}
 
 	@Override
-	public byte[] getRawMessage(MessageMeta messageMeta) throws IOException, MessagingException {
+	public RawMessage getRawMessage(MessageMeta messageMeta) throws IOException, MessagingException {
 		logger.debug("[getRawMessage] "+messageMeta.getMessageId());
 		
 		JavaxMailMessageMeta casted=(JavaxMailMessageMeta) messageMeta;
@@ -222,7 +220,10 @@ public class JavaxMailConnector extends MailServerConnector {
 			folder.open(Folder.READ_ONLY);
 			ByteArrayOutputStream baos=new ByteArrayOutputStream(ImapCopy.COPY_BUFFER_INITIAL_SIZE_BYTES);
 			casted.getMessage().writeTo(baos);
-			return baos.toByteArray();
+
+			RawMessage result=new RawMessage();
+			result.setRaw(baos.toByteArray());
+			return result;
 		}
 		finally {
 			folder.close();
@@ -230,32 +231,48 @@ public class JavaxMailConnector extends MailServerConnector {
 	}
 	
 	@Override
-	public void appendRawMessage(byte[] raw, FolderMeta destinationFolderMeta, String messageId) throws MessagingException {
-		Folder folder=((JavaxMailFolderMeta)destinationFolderMeta).getFolder();
+	public void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws MessagingException {
+//		Folder folder=((JavaxMailFolderMeta)destinationFolderMeta).getFolder();
+//		
+//		if (!folder.exists()) throw new MessagingException("inexistent folder: "+folder.getFullName());
+//
+//		try {
+//			folder.open(Folder.READ_WRITE);
+//			
+//			ByteArrayInputStream bais=new ByteArrayInputStream(raw);
+//			MimeMessage msg = MimeMessageUtils.createMimeMessage(getSession(),bais);
+//			msg.setHeader(Utilities.MESSAGE_ID_HEADER_NAME, messageId);
+//			//msg.saveChanges();		//no
+//			
+//			Message[] messageArray=new Message[1];
+//			messageArray[0]=msg;
+//			folder.appendMessages(messageArray);
+//		}
+//		finally {
+//			folder.close();
+//		}
 		
-		if (!folder.exists()) throw new MessagingException("inexistent folder: "+folder.getFullName());
-
-		try {
-			folder.open(Folder.READ_WRITE);
-			
-			ByteArrayInputStream bais=new ByteArrayInputStream(raw);
-			MimeMessage msg = MimeMessageUtils.createMimeMessage(getSession(),bais);
-			msg.setHeader(Utilities.MESSAGE_ID_HEADER_NAME, messageId);
-			//msg.saveChanges();		//no
-			
-			Message[] messageArray=new Message[1];
-			messageArray[0]=msg;
-			folder.appendMessages(messageArray);
-		}
-		finally {
-			folder.close();
-		}
+		throw new UnsupportedOperationException();
 	}
 
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	PRIVATE UTILITIES
 	
+	private void debugLogMessage(JavaxMailMessageMeta messageMeta) throws MessagingException {
+		Message msg=messageMeta.getMessage();
+		msg.getFolder().open(Folder.READ_ONLY);
+		logger.info("-----------------------------------");
+		logger.info("from        : "+Utilities.formatAddresses(msg.getFrom()));
+		logger.info("recipients  : "+Utilities.formatAddresses(msg.getAllRecipients()));
+		logger.info("replyTo     : "+Utilities.formatAddresses(msg.getReplyTo()));
+		logger.info("receivedDate: "+Utilities.formatDate(msg.getReceivedDate()));
+		logger.info("sentDate    : "+Utilities.formatDate(msg.getSentDate()));
+		logger.info("rfc822msgid:"+messageMeta.getMessageId());			
+		logger.info("-----------------------------------");
+		msg.getFolder().close();
+	}
+
 	private Message[] getChildMessages(Folder folder, Integer maxMessageAgeDays) throws MessagingException {
 		if (maxMessageAgeDays==null) {
 			return folder.getMessages();

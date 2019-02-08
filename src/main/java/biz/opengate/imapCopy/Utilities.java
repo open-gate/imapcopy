@@ -6,7 +6,6 @@ import java.util.Locale;
 import java.util.TreeSet;
 
 import javax.mail.Address;
-import javax.mail.Message;
 import javax.mail.MessagingException;
 
 import biz.opengate.imapCopy.connector.MessageBag;
@@ -43,11 +42,10 @@ public class Utilities {
 		return null;
 	}
 
-	public static String getAllFromAddresses(Message message) throws MessagingException {
-		Address[] from = message.getFrom();
+	public static String formatAddresses(Address[] addressArray) throws MessagingException {
 		String result="";
 				
-		for (Address address: from) {
+		for (Address address: addressArray) {
 			if (address instanceof javax.mail.internet.InternetAddress) {
 				javax.mail.internet.InternetAddress casted=(javax.mail.internet.InternetAddress) address;
 				result+=casted.getAddress()+",";
@@ -60,7 +58,7 @@ public class Utilities {
 		result=cutTail(result, ",");
 		return result;
 	}
-	
+
 	public static String formatDate(Date date) {
 		return formatDate(date,"yyyy/MM/dd HH:mm:ss");
 	}

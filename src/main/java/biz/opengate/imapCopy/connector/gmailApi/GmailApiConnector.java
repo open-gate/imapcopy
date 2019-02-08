@@ -1,6 +1,9 @@
 package biz.opengate.imapCopy.connector.gmailApi;
 
 import java.util.List;
+import java.util.Map.Entry;
+
+import java.util.Set;
 import java.util.TreeSet;
 
 import biz.opengate.imapCopy.ImapCopy;
@@ -8,6 +11,7 @@ import biz.opengate.imapCopy.Utilities;
 import biz.opengate.imapCopy.connector.FolderMeta;
 import biz.opengate.imapCopy.connector.MailServerConnector;
 import biz.opengate.imapCopy.connector.MessageMeta;
+import biz.opengate.imapCopy.connector.RawMessage;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -21,6 +25,8 @@ import com.google.api.services.gmail.model.Label;
 import com.google.api.services.gmail.model.ListLabelsResponse;
 import com.google.api.services.gmail.model.ListMessagesResponse;
 import com.google.api.services.gmail.model.Message;
+import com.google.api.services.gmail.model.MessagePart;
+import com.google.api.services.gmail.model.MessagePartHeader;
 import com.google.gson.JsonObject;
 
 import java.io.FileInputStream;
@@ -187,22 +193,62 @@ public class GmailApiConnector extends MailServerConnector {
 	}
 	
 	@Override
-	public byte[] getRawMessage(MessageMeta messageMeta) throws Exception {
+	public RawMessage getRawMessage(MessageMeta messageMeta) throws Exception {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public void appendRawMessage(byte[] raw, FolderMeta destinationFolderMeta, String messageId) throws Exception {
+	public void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws Exception {
 		GmailApiFolderMeta casted=(GmailApiFolderMeta) destinationFolderMeta;
 		Message message = new Message();
-		message.encodeRaw(raw);
+		message.encodeRaw(raw.getRaw());
 		message.setLabelIds(Arrays.asList(casted.getLabel().getId()));
-	    message = service.users().messages().insert("me", message).execute();
+		
+		service.users().messages().gmailImport("me",message)
+			.setInternalDateSource("dateHeader")
+			.execute();
 	}
 
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	PRIVATE UTILITIES
+	
+	//rfc822msgid:<CADSQLDkcJyLxjNE_sCopER2TE5f6vYcogZ598aq+OYiX4i-72A@mail.gmail.com>
+	//rfc822msgid:<20190207041202.CF09A64F036@wh-quarantine-bkmail-1.welcomeitalia.it>
+	private void downloadAndPrintSingleMessage() throws IOException {
+		List<GmailApiMessageMeta> list=listMessagesMatchingQuery("rfc822msgid:<20190207041202.CF09A64F036@wh-quarantine-bkmail-1.welcomeitalia.it>");
+		debugLogMessage(list.get(0));
+	}
+	
+	private void debugLogMessage(GmailApiMessageMeta messageMeta) {
+		Message message = messageMeta.getMessage();
+
+		logger.info("-----------------------------------");
+		logger.info("----------------------");
+		logger.info("EntrySet:");
+		try {
+			Set<Entry<String, Object>> entrySet = message.entrySet();
+			Iterator<Entry<String, Object>> iterator = entrySet.iterator();
+			while (iterator.hasNext()) {
+				Entry<String, Object> next = iterator.next();
+				logger.info(next.getKey()+"\t\t\t"+next.getValue());
+			}
+		}
+		catch (Exception e) {}
+		logger.info("----------------------");
+		logger.info("----------------------");
+		logger.info("Payload:");
+		try {
+	    	MessagePart payload = message.getPayload();
+	    	List<MessagePartHeader> headers = payload.getHeaders();
+	    	for (MessagePartHeader h: headers) {
+	    		logger.info(h.getName()+"\t\t\t"+h.getValue());
+	    	}
+		}
+		catch (Exception e) {}
+		logger.info("----------------------");
+		logger.info("-----------------------------------");
+	}
 	
 	private String formatPath(List<String> path) {
 		String completePath="";

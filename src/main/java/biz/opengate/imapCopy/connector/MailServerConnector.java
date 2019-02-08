@@ -36,9 +36,9 @@ public abstract class MailServerConnector {
 	 */
 	public abstract void removePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws Exception;
 	public abstract void generatePathIfInexistent(List<String> path) throws Exception;
-	public abstract byte[] getRawMessage(MessageMeta messageMeta) throws Exception;
+	public abstract RawMessage getRawMessage(MessageMeta messageMeta) throws Exception;
 	public abstract FolderMeta getFolder(List<String> path) throws Exception;
-	public abstract void appendRawMessage(byte[] raw, FolderMeta destinationFolderMeta, String messageId) throws Exception;
+	public abstract void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws Exception;
 
 
 	////////////////////////////////////////////////////////////////////////////////////////

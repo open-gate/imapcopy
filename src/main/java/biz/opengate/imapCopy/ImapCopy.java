@@ -30,6 +30,7 @@ import biz.opengate.imapCopy.connector.FolderMeta;
 import biz.opengate.imapCopy.connector.MailServerConnector;
 import biz.opengate.imapCopy.connector.MessageBag;
 import biz.opengate.imapCopy.connector.MessageMeta;
+import biz.opengate.imapCopy.connector.RawMessage;
 import biz.opengate.imapCopy.connector.gmailApi.GmailApiConnector;
 import biz.opengate.imapCopy.connector.javaxMail.JavaxMailConnector;
 
@@ -161,13 +162,23 @@ public class ImapCopy {
 			FolderMeta destinationFolderMeta = destinationConnection.getFolder(sourceFolder.getPathList());
 			logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+sourceMessageList.size()+" messages]");
 			
+			final int total=sourceMessageList.size();
+			int index=0;
+			int failed=0;
+			
 			for (MessageMeta sourceMessageMeta: sourceMessageList) {
+				index++;
+				if (index%100==0) {
+					logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+index+"/"+total+"]["+failed+" failed]");
+				}
+				
 				try {
-					byte[] raw = sourceConnection.getRawMessage(sourceMessageMeta);
+					RawMessage raw = sourceConnection.getRawMessage(sourceMessageMeta);
 					destinationConnection.appendRawMessage(raw, destinationFolderMeta, sourceMessageMeta.getMessageId());
 				}
 				catch (MessagingException | IOException e) {
 					logger.log(Level.WARN, "[appendMessages][exception]",e);
+					failed++;
 					continue;
 				}
 			}
