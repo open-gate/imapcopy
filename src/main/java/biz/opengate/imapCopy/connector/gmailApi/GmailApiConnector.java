@@ -11,6 +11,7 @@ import biz.opengate.imapCopy.connector.MessageMeta;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
@@ -137,6 +138,24 @@ public class GmailApiConnector extends MailServerConnector {
 
 	@Override
 	public void generatePathIfInexistent(List<String> path) throws Exception {
+		try {
+			generatePathIfInexistentInternal(path);
+		}
+		catch (GoogleJsonResponseException e) {
+			if (!e.getContent().contains("Invalid label name")) {
+				throw e;
+			}
+
+			logger.info("[generatePathIfInexistent][reserved folder name][modifying folder names]");
+			for (int i=0; i<path.size(); i++) {
+				path.set(i, "IMAP_"+path.get(i));
+			}
+			
+			generatePathIfInexistentInternal(path);
+		}
+	}
+
+	public void generatePathIfInexistentInternal(List<String> path) throws Exception {
 		FolderMeta folder = getFolder(path);
 		if (folder!=null) return;
 		
