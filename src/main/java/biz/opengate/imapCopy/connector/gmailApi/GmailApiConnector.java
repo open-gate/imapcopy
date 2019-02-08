@@ -3,6 +3,7 @@ package biz.opengate.imapCopy.connector.gmailApi;
 import java.util.List;
 import java.util.TreeSet;
 
+import biz.opengate.imapCopy.ImapCopy;
 import biz.opengate.imapCopy.Utilities;
 import biz.opengate.imapCopy.connector.FolderMeta;
 import biz.opengate.imapCopy.connector.MailServerConnector;
@@ -82,13 +83,17 @@ public class GmailApiConnector extends MailServerConnector {
 		
 	    service = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, googleCredentials).setApplicationName(APPLICATION_NAME).build();
 
-	    logger.info("["+getConnectionName()+"][connect][connecting][gmailApi]["+userName+"]");
+	    if (ImapCopy.isVerbose()) {
+	    	logger.info("["+getConnectionName()+"][connect][connecting][gmailApi]["+userName+"]");
+	    }
 	}
 
 	@Override
 	public void disconnect() {
 		service=null;
-		logger.info("["+getConnectionName()+"][disconnect][disconnected]");
+		if (ImapCopy.isVerbose()) {
+			logger.info("["+getConnectionName()+"][disconnect][disconnected]");
+		}		
 	}
 
 	@Override
@@ -136,7 +141,6 @@ public class GmailApiConnector extends MailServerConnector {
 		if (folder!=null) return;
 		
 		final String completePath=formatPath(path);
-
 		logger.info("[generatePathIfInexistent][generating: "+completePath+"]");
 		
 		Label label=new Label();
@@ -154,7 +158,7 @@ public class GmailApiConnector extends MailServerConnector {
         List<Label> labels = listResponse.getLabels();
         
         for (Label label: labels) {
-        	if (completePath.equals(label.getName())) {
+        	if (completePath.toLowerCase().equals(label.getName().toLowerCase())) {
         		GmailApiFolderMeta meta=new GmailApiFolderMeta(label);
         		return meta;
         	}

@@ -83,7 +83,9 @@ public class JavaxMailConnector extends MailServerConnector {
 		}
 		session = Session.getDefaultInstance(props, null);
 		store = session.getStore(sessionStore);
-		logger.info("["+getConnectionName()+"][connect][connecting]["+host+"]["+username+"]");
+		if (ImapCopy.isVerbose()) {
+			logger.info("["+getConnectionName()+"][connect][connecting]["+host+"]["+username+"]");
+		}
 		store.connect(host,username,password);
 		if (ImapCopy.isVerbose()) {
 			logger.info("["+getConnectionName()+"][connect][connected]");
@@ -96,7 +98,9 @@ public class JavaxMailConnector extends MailServerConnector {
 			if (store==null) return;
 			store.close();
 			store=null;
-			logger.info("["+getConnectionName()+"][disconnect][disconnected]");
+			if (ImapCopy.isVerbose()) {
+				logger.info("["+getConnectionName()+"][disconnect][disconnected]");
+			}
 		}
 		catch (Exception e) {
 			logger.log(Level.WARN,"["+getConnectionName()+"][disconnect]",e);
