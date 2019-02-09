@@ -43,7 +43,6 @@ public class ImapCopy {
 	public static final int COPY_BUFFER_INITIAL_SIZE_BYTES=10*1024;
 
 	private static boolean verbose;
-	private static boolean overwriteMessages;
 	private Integer maxMessageAgeDays;
 	private File configurationFile;
 	private JsonObject configuration;
@@ -76,11 +75,7 @@ public class ImapCopy {
             option = new Option("d", "maxMessageAgeDays", true, "max day age of messages (if not set all messages will be parsed)");
             option.setRequired(false);
             options.addOption(option);
-            
-            option = new Option("o", "overwriteMessages", false, "overwrite present messages");
-            option.setRequired(false);
-            options.addOption(option);
-            
+                
         	CommandLineParser parser = new DefaultParser();
         	CommandLine cmd = parser.parse(options, args);
             
@@ -90,13 +85,9 @@ public class ImapCopy {
             	maxMessageAgeDays=Integer.valueOf(cmd.getOptionValue("maxMessageAgeDays"));
             }
             
-            if (cmd.hasOption("overwriteMessages")) {
-            	overwriteMessages=true;
-            }
-            
             configurationFile=new File(cmd.getOptionValue("config"));
             
-   			logger.info("[arguments][verbose: "+verbose+"][maxMessageAgeDays: "+maxMessageAgeDays+"][overwriteMessages: "+overwriteMessages+"][configurationFile: "+configurationFile.getAbsolutePath()+"]");
+   			logger.info("[arguments][verbose: "+verbose+"][maxMessageAgeDays: "+maxMessageAgeDays+"][configurationFile: "+configurationFile.getAbsolutePath()+"]");
         } 
         catch (ParseException e) {
             System.out.println(e.getMessage());
@@ -105,7 +96,7 @@ public class ImapCopy {
             System.exit(1);
         }
 	}
-
+	
 	public void doWork() throws Exception {		
 		sourceConnection=getConnector("source");
 		destinationConnection=getConnector("destination");
@@ -126,16 +117,14 @@ public class ImapCopy {
 		///////////////////////////////////////////////////////////////////////
 		///////////////////////////////////////////////////////////////////////
 		//	READ THE DESTINATION
-		if (!overwriteMessages) {
-			try {
-				logger.info("[imapCopy][removing messages present in destination]");
-				destinationConnection.connect();
-				destinationConnection.removePresentMessages(maxMessageAgeDays, messageSet);
-				logger.info("[imapCopy]["+messageSet.size()+" messages to copy to destination account]");
-			}
-			finally {
-				destinationConnection.disconnect();
-			}
+		try {
+			logger.info("[imapCopy][removing messages present in destination]");
+			destinationConnection.connect();
+			destinationConnection.removePresentMessages(maxMessageAgeDays, messageSet);
+			logger.info("[imapCopy]["+messageSet.size()+" messages to copy to destination account]");
+		}
+		finally {
+			destinationConnection.disconnect();
 		}
 		///////////////////////////////////////////////////////////////////////
 		///////////////////////////////////////////////////////////////////////
@@ -183,11 +172,6 @@ public class ImapCopy {
 				
 				try {
 					RawMessage raw = sourceConnection.getRawMessage(sourceMessageMeta);
-					
-					if (overwriteMessages) {
-						destinationConnection.deleteMessage(sourceMessageMeta.getMessageId());						
-					}
-					
 					destinationConnection.appendRawMessage(raw, destinationFolderMeta, sourceMessageMeta.getMessageId());
 				}
 				catch (MessagingException | IOException e) {
@@ -225,7 +209,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			long startTime=System.currentTimeMillis();
-			logger.info("[imapCopy][1.0][start]");
+			logger.info("[imapCopy][1.6][start]");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWork();
 			long endTime=System.currentTimeMillis();
