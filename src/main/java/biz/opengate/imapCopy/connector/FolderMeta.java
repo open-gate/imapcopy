@@ -14,11 +14,6 @@ public abstract class FolderMeta implements Comparable<FolderMeta> {
 	//	UTILITIES
 	
 	@Override
-	public int compareTo(FolderMeta o) {
-		return completePath.compareTo(o.completePath);
-	}
-
-	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
@@ -42,6 +37,11 @@ public abstract class FolderMeta implements Comparable<FolderMeta> {
 			return false;
 		}
 		return true;
+	}
+	
+	@Override
+	public int compareTo(FolderMeta o) {
+		return completePath.compareTo(o.completePath);
 	}
 
 

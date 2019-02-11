@@ -118,9 +118,9 @@ public class ImapCopy {
 		///////////////////////////////////////////////////////////////////////
 		//	READ THE DESTINATION
 		try {
-			logger.info("[imapCopy][removing messages present in destination]");
+			logger.info("[imapCopy][ignoring messages present in destination]");
 			destinationConnection.connect();
-			destinationConnection.removePresentMessages(maxMessageAgeDays, messageSet);
+			destinationConnection.ignorePresentMessages(maxMessageAgeDays, messageSet);
 			logger.info("[imapCopy]["+messageSet.size()+" messages to copy to destination account]");
 		}
 		finally {

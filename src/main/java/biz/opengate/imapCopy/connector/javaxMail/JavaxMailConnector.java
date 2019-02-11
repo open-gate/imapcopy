@@ -149,14 +149,14 @@ public class JavaxMailConnector extends MailServerConnector {
 	}
 	
 	@Override
-	public void removePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws MessagingException {
+	public void ignorePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws MessagingException {
 		Stack<Folder> stack=new Stack<Folder>();
 		stack.push(getRoot());
 		
 		while (!stack.isEmpty()) {
 			Folder folder=stack.pop();
 			if (ImapCopy.isVerbose()) {
-				logger.info("[removePresentMessages]["+folder.getFullName()+"]");
+				logger.info("[ignorePresentMessages]["+folder.getFullName()+"]");
 			}
 
 			pushAllChildren(folder,stack);
@@ -167,7 +167,7 @@ public class JavaxMailConnector extends MailServerConnector {
 				try {
 					folder.open(Folder.READ_ONLY);
 					Message[] childMessages = getChildMessages(folder, maxMessageAgeDays);
-					logger.info("[removePresentMessages]["+folder.getFullName()+"]["+childMessages.length+" messages]");
+					logger.info("[ignorePresentMessages]["+folder.getFullName()+"]["+childMessages.length+" messages]");
 					prefetchMessageIds(folder, childMessages);
 					
 					for (Message childMessage: childMessages) {
@@ -177,7 +177,7 @@ public class JavaxMailConnector extends MailServerConnector {
 							Utilities.remove(messageSet, key);
 						}
 						catch (Exception e) {
-							logger.log(Level.WARN,"[removePresentMessages]",e);
+							logger.log(Level.WARN,"[ignorePresentMessages]",e);
 						}
 					}
 				}

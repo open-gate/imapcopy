@@ -34,7 +34,7 @@ public abstract class MailServerConnector {
 	 * @param messageSet
 	 * @throws Exception
 	 */
-	public abstract void removePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws Exception;
+	public abstract void ignorePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws Exception;
 	public abstract void generatePathIfInexistent(List<String> path) throws Exception;
 	public abstract RawMessage getRawMessage(MessageMeta messageMeta) throws Exception;
 	public abstract FolderMeta getFolder(List<String> path) throws Exception;

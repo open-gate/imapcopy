@@ -122,17 +122,17 @@ public class GmailApiConnector extends MailServerConnector {
 	}
 
 	@Override
-	public void removePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws Exception {
+	public void ignorePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws Exception {
 		final int total=messageSet.size();
 		int index=0;
-		int removed=0;
+		int ignored=0;
 
 		Iterator<MessageMeta> iterator = messageSet.iterator();
 		
 		while (iterator.hasNext()) {
 			index++;
 			if (index%100==0) {
-				logger.info("[removePresentMessages]["+index+"/"+total+"]["+removed+" removed]");
+				logger.info("[ignorePresentMessages]["+index+"/"+total+"]["+ignored+" ignored]");
 			}
 
 			MessageMeta meta = iterator.next();
@@ -140,7 +140,7 @@ public class GmailApiConnector extends MailServerConnector {
 			
 			if (checkMessageByMessageId(messageId)) {
 				iterator.remove();
-				removed++;
+				ignored++;
 			}
 		}
 	}
