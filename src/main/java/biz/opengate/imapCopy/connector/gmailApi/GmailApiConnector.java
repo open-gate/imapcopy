@@ -218,7 +218,8 @@ public class GmailApiConnector extends MailServerConnector {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	PRIVATE UTILITIES
 	
-	public void debugLogMessage(GmailApiMessageMeta messageMeta) {
+	@SuppressWarnings("unused")
+	private void debugLogMessage(GmailApiMessageMeta messageMeta) {
 		Message message = messageMeta.getMessage();
 
 		logger.info("-----------------------------------");

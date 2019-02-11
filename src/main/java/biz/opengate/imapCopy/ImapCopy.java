@@ -40,7 +40,7 @@ public class ImapCopy {
 
 	private static final Logger logger = LogManager.getLogger();
 	
-	public static final int COPY_BUFFER_INITIAL_SIZE_BYTES=10*1024;
+	public static final long MAX_CONNECTION_TIME_MINUTES=10;
 
 	private static boolean verbose;
 	private Integer maxMessageAgeDays;
@@ -154,22 +154,37 @@ public class ImapCopy {
 
 	private void appendMessages(FolderMeta sourceFolder, List<MessageMeta> sourceMessageList) throws Exception {
 		try {
-			sourceConnection.connect();
-			destinationConnection.connect();
-
-			FolderMeta destinationFolderMeta = destinationConnection.getFolder(sourceFolder.getPathList());
-			logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+sourceMessageList.size()+" messages]");
-			
+			FolderMeta destinationFolderMeta=null;
+			boolean firstRun=true;
+			long lastReconnectionTime=0;
 			final int total=sourceMessageList.size();
 			int index=0;
 			int failed=0;
 			
 			for (MessageMeta sourceMessageMeta: sourceMessageList) {
+				///////////////////////////////////////////////////////////////
+				//	RECONNECT EVERY n MINUTES
+				if (firstRun || System.currentTimeMillis()-lastReconnectionTime>(MAX_CONNECTION_TIME_MINUTES*60*1000)) {
+					reconnectBoth(!firstRun);
+					destinationFolderMeta=destinationConnection.getFolder(sourceFolder.getPathList());
+					
+					if (firstRun) {
+						logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+total+" messages]");
+					}
+					
+					lastReconnectionTime=System.currentTimeMillis();
+					firstRun=false;
+				}
+				///////////////////////////////////////////////////////////////
+				///////////////////////////////////////////////////////////////
+				//	LOG EVERY n OPERATIONS
 				index++;
 				if (index%100==0) {
 					logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+index+"/"+total+"]["+failed+" failed]");
 				}
-				
+				///////////////////////////////////////////////////////////////
+				///////////////////////////////////////////////////////////////
+				//	COPY THE MESSAGE
 				try {
 					RawMessage raw = sourceConnection.getRawMessage(sourceMessageMeta);
 					destinationConnection.appendRawMessage(raw, destinationFolderMeta, sourceMessageMeta.getMessageId());
@@ -179,6 +194,7 @@ public class ImapCopy {
 					failed++;
 					continue;
 				}
+				///////////////////////////////////////////////////////////////
 			}
 		}
 		finally {			
@@ -186,7 +202,7 @@ public class ImapCopy {
 			destinationConnection.disconnect();
 		}
 	}
-
+	
 	private MailServerConnector getConnector(String connectionName) {
 		final JsonObject connectionConfiguration=configuration.get(connectionName).getAsJsonObject();
 		final String connectorClass=connectionConfiguration.get("connectorClass").getAsString();
@@ -201,18 +217,33 @@ public class ImapCopy {
 
 		throw new RuntimeException("unknown connector class: '"+connectorClass+"'");
 	}
-	
+
+	private void reconnectBoth(boolean doSleep) throws Exception {
+		logger.info("[closingConnections]");
+		
+		sourceConnection.disconnect();
+		destinationConnection.disconnect();
+		
+		if (doSleep) {
+			Thread.sleep(5*1000);
+		}
+				
+		logger.info("[reopeningConnections]");		
+		sourceConnection.connect();
+		destinationConnection.connect();
+	}
+
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	STATIC PART
 
     public static void main(String[] args) {
 		try {
-			long startTime=System.currentTimeMillis();
-			logger.info("[imapCopy][1.6][start]");
+			final long startTime=System.currentTimeMillis();
+			logger.info("[imapCopy][1.8][start]");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWork();
-			long endTime=System.currentTimeMillis();
+			final long endTime=System.currentTimeMillis();
 			logger.info("[imapCopy][done]["+(endTime-startTime)+" ms]");
 		}
 		catch (Exception e) {			

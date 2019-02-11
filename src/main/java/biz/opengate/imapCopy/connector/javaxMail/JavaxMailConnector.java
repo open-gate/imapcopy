@@ -13,6 +13,7 @@ import java.util.Stack;
 import java.util.TreeSet;
 import java.util.Map.Entry;
 
+import javax.mail.FetchProfile;
 import javax.mail.Folder;
 import javax.mail.Message;
 import javax.mail.MessagingException;
@@ -39,10 +40,12 @@ public class JavaxMailConnector extends MailServerConnector {
 	//	DEFINITION
 
 	private static final Logger logger = LogManager.getLogger();
+	
+	private static ByteArrayOutputStream baos=new ByteArrayOutputStream(1024);
 
 	private Session session;
 	private Store store;
-
+	
 	public JavaxMailConnector(String connectionName, JsonObject configuration) {
 		super(connectionName, configuration);
 	}
@@ -119,14 +122,15 @@ public class JavaxMailConnector extends MailServerConnector {
 			
 			pushAllChildren(folder,stack);
 			
-			///////////////////////////////////////////////////////////////////////
+			///////////////////////////////////////////////////////////////////
 			//	READ CHILD MESSAGES
 			if (canHoldMessages(folder)) {
 				try {
 					folder.open(Folder.READ_ONLY);
 					Message[] childMessages = getChildMessages(folder, maxMessageAgeDays);
 					logger.info("[getMessages]["+folder.getFullName()+"]["+childMessages.length+" messages]");
-	
+					prefetchMessageIds(folder, childMessages);
+
 					for (Message childMessage: childMessages) {
 						MessageMeta mm=new JavaxMailMessageMeta(childMessage);
 						if (mm.getMessageId()!=null) {
@@ -138,12 +142,12 @@ public class JavaxMailConnector extends MailServerConnector {
 					folder.close();
 				}
 			}
-			///////////////////////////////////////////////////////////////////////
+			///////////////////////////////////////////////////////////////////
 		}
 		
 		return result;
 	}
-
+	
 	@Override
 	public void removePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws MessagingException {
 		Stack<Folder> stack=new Stack<Folder>();
@@ -157,14 +161,15 @@ public class JavaxMailConnector extends MailServerConnector {
 
 			pushAllChildren(folder,stack);
 
-			///////////////////////////////////////////////////////////////////////
+			///////////////////////////////////////////////////////////////////
 			//	READ CHILD MESSAGES
 			if (canHoldMessages(folder)) {
 				try {
 					folder.open(Folder.READ_ONLY);
 					Message[] childMessages = getChildMessages(folder, maxMessageAgeDays);
 					logger.info("[removePresentMessages]["+folder.getFullName()+"]["+childMessages.length+" messages]");
-	
+					prefetchMessageIds(folder, childMessages);
+					
 					for (Message childMessage: childMessages) {
 						try {
 							MessageMeta key=new JavaxMailMessageMeta(childMessage);
@@ -180,7 +185,7 @@ public class JavaxMailConnector extends MailServerConnector {
 					folder.close();
 				}
 			}
-			///////////////////////////////////////////////////////////////////////
+			///////////////////////////////////////////////////////////////////
 		}
 	}
 		
@@ -218,9 +223,8 @@ public class JavaxMailConnector extends MailServerConnector {
 		
 		try {
 			folder.open(Folder.READ_ONLY);
-			ByteArrayOutputStream baos=new ByteArrayOutputStream(ImapCopy.COPY_BUFFER_INITIAL_SIZE_BYTES);
+			baos.reset();
 			casted.getMessage().writeTo(baos);
-
 			RawMessage result=new RawMessage();
 			result.setRaw(baos.toByteArray());
 			return result;
@@ -300,6 +304,17 @@ public class JavaxMailConnector extends MailServerConnector {
 		for (Folder childFolder: childFolders) {
 			stack.push(childFolder);
 		}
+	}
+
+	/**
+	 * @param folder must be already open
+	 * @param messages
+	 * @throws MessagingException 
+	 */
+	private void prefetchMessageIds(Folder folder, Message[] messages) throws MessagingException {
+	    FetchProfile profile = new FetchProfile();			    
+        profile.add(Utilities.MESSAGE_ID_HEADER_NAME);
+	    folder.fetch(messages, profile);		
 	}
 
 	
