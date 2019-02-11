@@ -8,28 +8,28 @@ ImapCopy allow for a fast and easy synchronization of mail massages between two 
 
 ## Parameters
 
-Imap copy allows the following parameters:\s\s
+Imap copy allows the following parameters:  
 
-*  -c, --config\s\s
-The json configuration file (formatted as specified below) holding connection information for both the source and destination IMAP server.\s\s
+*  -c, --config  
+The json configuration file (formatted as specified below) holding connection information for both the source and destination IMAP server.  
 
-*  -v, --verbose\s\s
-Activate verbose output (default to false).\s\s
+*  -v, --verbose  
+Activate verbose output (default to false).  
 
-*  -d, --maxMessageAgeDays\s\s
-The max age in days of the messages from to source IMAP, to be copied into the destination IMAP. When not specified, **all** messages are analyzed.\s\s
+*  -d, --maxMessageAgeDays  
+The max age in days of the messages from to source IMAP, to be copied into the destination IMAP. When not specified, **all** messages are analyzed.  
 
 
 
 ## Configuration file
 ImapCopy needs how to connect to the source and destination IMAP. This must be specified in a .json file.
 The file must hold a single object, with at least two properties, "source" and "destination". Other properties will be ignored.
-Both "source" and "destination" must have a "connectorClass" property. Allowed values for this property are:\s\s
+Both "source" and "destination" must have a "connectorClass" property. Allowed values for this property are:  
 *  -"JavaxMailConnection"
 *  -"GmailApiConnection"
 
 ### JavaxMailConnection
-In case "JavaxMailConnection" is specified, the object must also have the following properties:\s\s
+In case "JavaxMailConnection" is specified, the object must also have the following properties:  
 *  -"mail.imap.host": the mail server host to connecto to 
 *  -"mail.imap.user": username of the account on the host
 *  -"mail.imap.password": password for the account
