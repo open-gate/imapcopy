@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
-import java.util.TreeSet;
 
 import javax.mail.MessagingException;
 
@@ -40,7 +40,7 @@ public class ImapCopy {
 
 	private static final Logger logger = LogManager.getLogger();
 	
-	public static final long MAX_CONNECTION_TIME_MINUTES=10;
+	private static final long COPY_RETRY_COUNT=3;
 
 	private static boolean verbose;
 	private Integer maxMessageAgeDays;
@@ -103,7 +103,7 @@ public class ImapCopy {
 		
 		///////////////////////////////////////////////////////////////////////
 		//	READ THE SOURCE
-		TreeSet<MessageMeta> messageSet=null;
+		HashSet<MessageMeta> messageSet=null;
 		
 		try {
 			logger.info("[imapCopy][getting source messages]");
@@ -155,27 +155,17 @@ public class ImapCopy {
 	private void appendMessages(FolderMeta sourceFolder, List<MessageMeta> sourceMessageList) throws Exception {
 		try {
 			FolderMeta destinationFolderMeta=null;
-			boolean firstRun=true;
-			long lastReconnectionTime=0;
 			final int total=sourceMessageList.size();
 			int index=0;
 			int failed=0;
 			
+			sourceConnection.connect();
+			destinationConnection.connect();
+			
+			destinationFolderMeta=destinationConnection.getFolder(sourceFolder.getPathList());
+			logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+total+" messages]");
+			
 			for (MessageMeta sourceMessageMeta: sourceMessageList) {
-				///////////////////////////////////////////////////////////////
-				//	RECONNECT EVERY n MINUTES
-				if (firstRun || System.currentTimeMillis()-lastReconnectionTime>(MAX_CONNECTION_TIME_MINUTES*60*1000)) {
-					reconnectBoth();
-					destinationFolderMeta=destinationConnection.getFolder(sourceFolder.getPathList());
-					
-					if (firstRun) {
-						logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+total+" messages]");
-					}
-					
-					lastReconnectionTime=System.currentTimeMillis();
-					firstRun=false;
-				}
-				///////////////////////////////////////////////////////////////
 				///////////////////////////////////////////////////////////////
 				//	LOG EVERY n OPERATIONS
 				index++;
@@ -185,14 +175,26 @@ public class ImapCopy {
 				///////////////////////////////////////////////////////////////
 				///////////////////////////////////////////////////////////////
 				//	COPY THE MESSAGE
-				try {
-					RawMessage raw = sourceConnection.getRawMessage(sourceMessageMeta);
-					destinationConnection.appendRawMessage(raw, destinationFolderMeta, sourceMessageMeta.getMessageId());
-				}
-				catch (MessagingException | IOException e) {
-					logger.log(Level.WARN, "[appendMessages][exception]",e);
-					failed++;
-					continue;
+				for (int retry=0; retry<COPY_RETRY_COUNT; retry++) {
+					try {
+						RawMessage raw = sourceConnection.getRawMessage(sourceMessageMeta);
+						destinationConnection.appendRawMessage(raw, destinationFolderMeta, sourceMessageMeta.getMessageId());
+					}
+					catch (MessagingException | IOException e) {
+						logger.log(Level.WARN, "[appendMessages][exception][try: "+retry+"]",e);
+
+						if (retry<COPY_RETRY_COUNT-1) {
+							sourceConnection.disconnect();
+							destinationConnection.disconnect();
+							Thread.sleep(5*1000);
+							sourceConnection.connect();
+							destinationConnection.connect();							
+						}
+						else {
+							failed++;
+							continue;
+						}
+					}
 				}
 				///////////////////////////////////////////////////////////////
 			}
@@ -216,20 +218,6 @@ public class ImapCopy {
 		}
 
 		throw new RuntimeException("unknown connector class: '"+connectorClass+"'");
-	}
-
-	private void reconnectBoth() throws Exception {
-		if (verbose) {
-			logger.info("[closingConnections]");
-		}		
-		sourceConnection.disconnect();
-		destinationConnection.disconnect();
-		
-		if (verbose) {
-			logger.info("[reopeningConnections]");
-		}
-		sourceConnection.connect();
-		destinationConnection.connect();
 	}
 
 

@@ -6,12 +6,12 @@ import java.io.IOException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
-import java.util.TreeSet;
 import java.util.Map.Entry;
 
 import javax.mail.FetchProfile;
@@ -111,10 +111,10 @@ public class JavaxMailConnector extends MailServerConnector {
 			logger.log(Level.WARN,"["+getConnectionName()+"][disconnect]",e);
 		}
 	}
-		
+
 	@Override
-	public TreeSet<MessageMeta> getMessages(Integer maxMessageAgeDays) throws MessagingException {
-		TreeSet<MessageMeta> result=new TreeSet<MessageMeta>();
+	public HashSet<MessageMeta> getMessages(Integer maxMessageAgeDays) throws MessagingException {
+		HashSet<MessageMeta> result=new HashSet<MessageMeta>();
 		Stack<Folder> stack=new Stack<Folder>();
 		stack.push(getRoot());
 				
@@ -153,7 +153,7 @@ public class JavaxMailConnector extends MailServerConnector {
 	}
 	
 	@Override
-	public void ignorePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws MessagingException {
+	public void ignorePresentMessages(Integer maxMessageAgeDays, HashSet<MessageMeta> messageSet) throws MessagingException {
 		Stack<Folder> stack=new Stack<Folder>();
 		stack.push(getRoot());
 		
@@ -310,7 +310,7 @@ public class JavaxMailConnector extends MailServerConnector {
 	private void prefetchMessageIds(Folder folder, Message[] messages) throws MessagingException {
 		FetchProfile profile = new FetchProfile();
 		profile.add(Utilities.MESSAGE_ID_HEADER_NAME);
-		folder.fetch(messages, profile);
+		folder.fetch(messages, profile);						//slow on specific folders...
 	}
 
 	

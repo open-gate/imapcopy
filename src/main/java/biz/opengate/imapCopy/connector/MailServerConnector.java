@@ -1,7 +1,7 @@
 package biz.opengate.imapCopy.connector;
 
+import java.util.HashSet;
 import java.util.List;
-import java.util.TreeSet;
 
 import com.google.gson.JsonObject;
 
@@ -27,14 +27,14 @@ public abstract class MailServerConnector {
 	 * @param maxMessageAgeDays if null, returns all the messages
 	 * @return
 	 */
-	public abstract TreeSet<MessageMeta> getMessages(Integer maxMessageAgeDays) throws Exception;
+	public abstract HashSet<MessageMeta> getMessages(Integer maxMessageAgeDays) throws Exception;
 	/**
 	 * removes from messageSet the messages already present, using the header Message-ID to match messages 
 	 * @param maxMessageAgeDays if null, parse all messages
 	 * @param messageSet
 	 * @throws Exception
 	 */
-	public abstract void ignorePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws Exception;
+	public abstract void ignorePresentMessages(Integer maxMessageAgeDays, HashSet<MessageMeta> messageSet) throws Exception;
 	public abstract void generatePathIfInexistent(List<String> path) throws Exception;
 	public abstract RawMessage getRawMessage(MessageMeta messageMeta) throws Exception;
 	public abstract FolderMeta getFolder(List<String> path) throws Exception;

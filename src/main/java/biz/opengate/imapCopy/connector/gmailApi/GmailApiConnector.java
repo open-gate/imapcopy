@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import java.util.Set;
-import java.util.TreeSet;
 
 import biz.opengate.imapCopy.ImapCopy;
 import biz.opengate.imapCopy.Utilities;
@@ -34,6 +33,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 
@@ -107,8 +107,8 @@ public class GmailApiConnector extends MailServerConnector {
 	}
 
 	@Override
-	public TreeSet<MessageMeta> getMessages(Integer maxMessageAgeDays) throws Exception {
-		TreeSet<MessageMeta> result=new TreeSet<MessageMeta>();
+	public HashSet<MessageMeta> getMessages(Integer maxMessageAgeDays) throws Exception {
+		HashSet<MessageMeta> result=new HashSet<MessageMeta>();
 		List<GmailApiMessageMeta> childMessages = getChildMessages(maxMessageAgeDays);
 		logger.info("[getMessages]["+childMessages.size()+" messages]");
 			
@@ -122,7 +122,7 @@ public class GmailApiConnector extends MailServerConnector {
 	}
 
 	@Override
-	public void ignorePresentMessages(Integer maxMessageAgeDays, TreeSet<MessageMeta> messageSet) throws Exception {
+	public void ignorePresentMessages(Integer maxMessageAgeDays, HashSet<MessageMeta> messageSet) throws Exception {
 		final int total=messageSet.size();
 		int index=0;
 		int ignored=0;
@@ -218,7 +218,7 @@ public class GmailApiConnector extends MailServerConnector {
 			.setInternalDateSource("dateHeader")
 			.execute();
 		
-//		message = service.users().messages().insert("me", message).execute();	//errato
+//		message = service.users().messages().insert("me", message).execute();	//sets incorrect received header
 	}
 	
 

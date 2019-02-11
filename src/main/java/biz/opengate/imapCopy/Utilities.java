@@ -2,8 +2,8 @@ package biz.opengate.imapCopy;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Locale;
-import java.util.TreeSet;
 
 import javax.mail.Address;
 import javax.mail.MessagingException;
@@ -14,7 +14,7 @@ import biz.opengate.imapCopy.connector.MessageMeta;
 public class Utilities {
 	public static final String MESSAGE_ID_HEADER_NAME="Message-ID";
 
-	public static MessageBag toMessageBag(TreeSet<MessageMeta> messageSet) throws Exception {
+	public static MessageBag toMessageBag(HashSet<MessageMeta> messageSet) throws Exception {
 		MessageBag bag=new MessageBag();		
 		for (MessageMeta m: messageSet) {
 			bag.push(m);
