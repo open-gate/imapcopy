@@ -1,43 +1,45 @@
 # Welcome to the home of ImapCopy!
 
-# Why use ImapCopy?
+## Why use ImapCopy?
 
 ImapCopy allow for a fast and easy synchronization of mail massages between two IMAP accounts.
 
 
 
-# Parameters
+## Parameters
 
-Imap copy allows the following parameters:
+Imap copy allows the following parameters:\s\s
 
--c, --config
-The json configuration file (formatted as specified below) holding connection information for both the source and destination IMAP server.
+*  -c, --config\s\s
+The json configuration file (formatted as specified below) holding connection information for both the source and destination IMAP server.\s\s
 
--v, --verbose
-Activate verbose output (default to false).
+*  -v, --verbose\s\s
+Activate verbose output (default to false).\s\s
 
--d, --maxMessageAgeDays
-The max age in days of the messages from to source IMAP, to be copied into the destination IMAP. When not specified, *all* messages are analyzed.
+*  -d, --maxMessageAgeDays\s\s
+The max age in days of the messages from to source IMAP, to be copied into the destination IMAP. When not specified, **all** messages are analyzed.\s\s
 
 
 
-# Configuration file
+## Configuration file
 ImapCopy needs how to connect to the source and destination IMAP. This must be specified in a .json file.
 The file must hold a single object, with at least two properties, "source" and "destination". Other properties will be ignored.
-Both "source" and "destination" must have a "connectorClass" property. Allowed values for this property are:
--"JavaxMailConnection"
--"GmailApiConnection"
+Both "source" and "destination" must have a "connectorClass" property. Allowed values for this property are:\s\s
+*  -"JavaxMailConnection"
+*  -"GmailApiConnection"
 
-In case "JavaxMailConnection" is specified, the object must also have the following properties:
--"mail.imap.host": the mail server host to connecto to 
--"mail.imap.user": username of the account on the host
--"mail.imap.password": password for the account
--"mail.store.protocol": "imaps"
+### JavaxMailConnection
+In case "JavaxMailConnection" is specified, the object must also have the following properties:\s\s
+*  -"mail.imap.host": the mail server host to connecto to 
+*  -"mail.imap.user": username of the account on the host
+*  -"mail.imap.password": password for the account
+*  -"mail.store.protocol": "imaps"
 Other parameters can be present. The list of possible parameters follows the IMAP protocol. A list can be found at https://www.tutorialspoint.com/javamail_api/javamail_api_imap_servers.htm
 
+### GmailApiConnection
 In case "GmailApiConnection" is specified, the object must also have the following properties:
--"credentialsFilePath": path to the json credentials file, obtained from the google cloud console. The credentials must be generated with the MAIL_GOOGLE_COM scope.
--"mail.imap.user": username of the account on the host
+*  -"credentialsFilePath": path to the json credentials file, obtained from the google cloud console. The credentials must be generated with the MAIL_GOOGLE_COM scope.
+*  -"mail.imap.user": username of the account on the host
 
 
 
