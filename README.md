@@ -34,6 +34,7 @@ In case "JavaxMailConnection" is specified, the connection object must have the 
 *  "mail.imap.user": username of the account on the host
 *  "mail.imap.password": password for the account on the host
 *  "mail.store.protocol": "imaps"  
+  
 Other parameters can be present. The list of possible parameters follows the IMAP protocol. A list can be found at https://www.tutorialspoint.com/javamail_api/javamail_api_imap_servers.htm
 
 ### GmailApiConnection

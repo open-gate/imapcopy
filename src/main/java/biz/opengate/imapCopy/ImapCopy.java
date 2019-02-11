@@ -219,16 +219,19 @@ public class ImapCopy {
 	}
 
 	private void reconnectBoth(boolean doSleep) throws Exception {
-		logger.info("[closingConnections]");
-		
+		if (verbose) {
+			logger.info("[closingConnections]");
+		}		
 		sourceConnection.disconnect();
 		destinationConnection.disconnect();
 		
 		if (doSleep) {
 			Thread.sleep(5*1000);
 		}
-				
-		logger.info("[reopeningConnections]");		
+		
+		if (verbose) {
+			logger.info("[reopeningConnections]");
+		}
 		sourceConnection.connect();
 		destinationConnection.connect();
 	}
