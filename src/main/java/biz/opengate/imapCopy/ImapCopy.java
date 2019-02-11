@@ -165,7 +165,7 @@ public class ImapCopy {
 				///////////////////////////////////////////////////////////////
 				//	RECONNECT EVERY n MINUTES
 				if (firstRun || System.currentTimeMillis()-lastReconnectionTime>(MAX_CONNECTION_TIME_MINUTES*60*1000)) {
-					reconnectBoth(!firstRun);
+					reconnectBoth();
 					destinationFolderMeta=destinationConnection.getFolder(sourceFolder.getPathList());
 					
 					if (firstRun) {
@@ -218,16 +218,12 @@ public class ImapCopy {
 		throw new RuntimeException("unknown connector class: '"+connectorClass+"'");
 	}
 
-	private void reconnectBoth(boolean doSleep) throws Exception {
+	private void reconnectBoth() throws Exception {
 		if (verbose) {
 			logger.info("[closingConnections]");
 		}		
 		sourceConnection.disconnect();
 		destinationConnection.disconnect();
-		
-		if (doSleep) {
-			Thread.sleep(5*1000);
-		}
 		
 		if (verbose) {
 			logger.info("[reopeningConnections]");

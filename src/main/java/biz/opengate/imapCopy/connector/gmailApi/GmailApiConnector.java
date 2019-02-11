@@ -147,35 +147,42 @@ public class GmailApiConnector extends MailServerConnector {
 
 	@Override
 	public void generatePathIfInexistent(List<String> path) throws Exception {
+		for (int depth=0; depth<path.size(); depth++) {
+			try {			
+				generateLabel(path,depth);
+			}
+			catch (ReservedFolderNameException e) {
+				logger.info("[generatePathIfInexistent][reserved folder name]["+path.get(depth)+"]");
+				path.set(depth, "IMAP_"+path.get(depth));
+				generateLabel(path,depth);
+			}
+		}
+	}
+	
+	private void generateLabel(List<String> path, int depth) throws Exception {
 		try {
-			generatePathIfInexistentInternal(path);
+			List<String> tmp=new ArrayList<String>(depth+1);
+			for (int i=0; i<=depth; i++) tmp.add(path.get(i));
+			
+			FolderMeta folder = getFolder(tmp);
+			if (folder!=null) return;
+			
+			final String completePath=formatPath(tmp);
+			logger.info("[generateLabel][generating: "+completePath+"]");
+			
+			Label label=new Label();
+			label.setName(completePath);
+			label.setLabelListVisibility("labelShow");
+			label.setMessageListVisibility("show");
+			service.users().labels().create("me",label).execute();
 		}
 		catch (GoogleJsonResponseException e) {
 			if (!e.getContent().contains("Invalid label name")) {
 				throw e;
 			}
-
-			logger.info("[generatePathIfInexistent][reserved folder name][modifying folder names]");
-			for (int i=0; i<path.size(); i++) {
-				path.set(i, "IMAP_"+path.get(i));
-			}
 			
-			generatePathIfInexistentInternal(path);
+			throw new ReservedFolderNameException(e);
 		}
-	}
-
-	public void generatePathIfInexistentInternal(List<String> path) throws Exception {
-		FolderMeta folder = getFolder(path);
-		if (folder!=null) return;
-		
-		final String completePath=formatPath(path);
-		logger.info("[generatePathIfInexistent][generating: "+completePath+"]");
-		
-		Label label=new Label();
-		label.setName(completePath);
-		label.setLabelListVisibility("labelShow");
-		label.setMessageListVisibility("show");
-		service.users().labels().create("me",label).execute();
 	}
 
 	@Override
