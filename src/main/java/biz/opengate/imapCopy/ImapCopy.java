@@ -40,7 +40,7 @@ public class ImapCopy {
 
 	private static final Logger logger = LogManager.getLogger();
 	
-	public static final long MAX_CONNECTION_TIME_MINUTES=5;
+	public static final long MAX_CONNECTION_TIME_MINUTES=10;
 
 	private static boolean verbose;
 	private Integer maxMessageAgeDays;
