@@ -1,5 +1,6 @@
 package biz.opengate.imapCopy.connector.javaxMail;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Calendar;
@@ -19,8 +20,10 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.Store;
+import javax.mail.internet.MimeMessage;
 import javax.mail.search.ReceivedDateTerm;
 
+import org.apache.commons.mail.util.MimeMessageUtils;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,6 +45,7 @@ public class JavaxMailConnector extends MailServerConnector {
 	private static final Logger logger = LogManager.getLogger();
 	
 	private static ByteArrayOutputStream baos=new ByteArrayOutputStream(1024);
+	private static Message[] dummyMessageArray=new Message[1];
 
 	private Session session;
 	private Store store;
@@ -174,7 +178,7 @@ public class JavaxMailConnector extends MailServerConnector {
 						try {
 							MessageMeta key=new JavaxMailMessageMeta(childMessage);
 							if (key.getMessageId()==null) continue;
-							Utilities.remove(messageSet, key);
+							messageSet.remove(key);
 						}
 						catch (Exception e) {
 							logger.log(Level.WARN,"[ignorePresentMessages]",e);
@@ -236,31 +240,23 @@ public class JavaxMailConnector extends MailServerConnector {
 	
 	@Override
 	public void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws MessagingException {
-//		Folder folder=((JavaxMailFolderMeta)destinationFolderMeta).getFolder();
-//		
-//		if (!folder.exists()) throw new MessagingException("inexistent folder: "+folder.getFullName());
-//
-//		try {
-//			folder.open(Folder.READ_WRITE);
-//			
-//			ByteArrayInputStream bais=new ByteArrayInputStream(raw);
-//			MimeMessage msg = MimeMessageUtils.createMimeMessage(getSession(),bais);
-//			msg.setHeader(Utilities.MESSAGE_ID_HEADER_NAME, messageId);
-//			//msg.saveChanges();		//no
-//			
-//			Message[] messageArray=new Message[1];
-//			messageArray[0]=msg;
-//			folder.appendMessages(messageArray);
-//		}
-//		finally {
-//			folder.close();
-//		}
-		
-		throw new UnsupportedOperationException();
-	}
-	
-	public void deleteMessage(String messageId) throws Exception {
-		throw new UnsupportedOperationException();
+		JavaxMailFolderMeta casted=(JavaxMailFolderMeta) destinationFolderMeta;
+		Folder folder=casted.getFolder();
+		if (!folder.exists()) throw new MessagingException("inexistent folder: "+folder.getFullName());
+
+		try {
+			folder.open(Folder.READ_WRITE);
+			
+			ByteArrayInputStream bais=new ByteArrayInputStream(raw.getRaw());
+			MimeMessage msg = MimeMessageUtils.createMimeMessage(getSession(),bais);
+			msg.setHeader(Utilities.MESSAGE_ID_HEADER_NAME, messageId);
+			//msg.saveChanges();		//no
+			dummyMessageArray[0]=msg;
+			folder.appendMessages(dummyMessageArray);
+		}
+		finally {
+			folder.close();
+		}
 	}
 	
 	
@@ -312,9 +308,9 @@ public class JavaxMailConnector extends MailServerConnector {
 	 * @throws MessagingException 
 	 */
 	private void prefetchMessageIds(Folder folder, Message[] messages) throws MessagingException {
-	    FetchProfile profile = new FetchProfile();			    
-        profile.add(Utilities.MESSAGE_ID_HEADER_NAME);
-	    folder.fetch(messages, profile);		
+		FetchProfile profile = new FetchProfile();
+		profile.add(Utilities.MESSAGE_ID_HEADER_NAME);
+		folder.fetch(messages, profile);
 	}
 
 	

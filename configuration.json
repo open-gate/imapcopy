@@ -1,5 +1,6 @@
 {
   "source": {
+	"connectorClass": "JavaxMailConnection",
   	"mail.imap.host": "imapHost",
 	"mail.imap.user": "imapUser",
 	"mail.imap.password": "imapPassword",
@@ -10,6 +11,7 @@
   },
   
   "destination": {
+	"connectorClass": "JavaxMailConnection",
   	"mail.imap.host": "imapHost",
 	"mail.imap.user": "imapUser",
 	"mail.imap.password": "imapPassword",

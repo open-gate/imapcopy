@@ -131,7 +131,7 @@ public class GmailApiConnector extends MailServerConnector {
 		
 		while (iterator.hasNext()) {
 			index++;
-			if (index%100==0) {
+			if (index%500==0) {
 				logger.info("[ignorePresentMessages]["+index+"/"+total+"]["+ignored+" ignored]");
 			}
 

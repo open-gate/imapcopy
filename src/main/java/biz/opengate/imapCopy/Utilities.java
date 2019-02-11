@@ -22,26 +22,6 @@ public class Utilities {
 		return bag;
 	}
 
-	public static <T extends Comparable<T>> void remove(TreeSet<T> set, T key) {
-		T firstMatch = Utilities.getFirstMatch(set, key);
-		if (firstMatch!=null) {
-			set.remove(firstMatch);
-		}
-	}
-
-	public static <T extends Comparable<T>> T getFirstMatch(TreeSet<T> set, T key) {
-		if (!set.isEmpty()) {
-			T floor = set.floor(key);
-			if (floor!=null) {
-				if (floor.compareTo(key)==0) {
-					return floor;	
-				}
-			}
-		}
-
-		return null;
-	}
-
 	public static String formatAddresses(Address[] addressArray) throws MessagingException {
 		String result="";
 				
@@ -63,7 +43,7 @@ public class Utilities {
 		return formatDate(date,"yyyy/MM/dd HH:mm:ss");
 	}
 	
-	public static String formatDate(Date date, String format) {
+	private static String formatDate(Date date, String format) {
 		if (date==null) return "";
 		Locale currentLocale = new Locale("it");		
 		SimpleDateFormat dateFormat = new SimpleDateFormat(format, currentLocale);
