@@ -215,10 +215,10 @@ public class GmailApiConnector extends MailServerConnector {
 		message.setLabelIds(Arrays.asList(casted.getLabel().getId()));
 		
 		service.users().messages().gmailImport("me",message)
-			.setInternalDateSource("dateHeader")
+			.setInternalDateSource("dateHeader")								//do not add a gmail Received header
 			.execute();
 		
-//		message = service.users().messages().insert("me", message).execute();	//sets incorrect received header
+//		message = service.users().messages().insert("me", message).execute();	//sets incorrect Received header
 	}
 	
 

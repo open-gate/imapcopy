@@ -41,6 +41,7 @@ public class ImapCopy {
 	private static final Logger logger = LogManager.getLogger();
 	
 	private static final long COPY_RETRY_COUNT=3;
+	private static final long ON_ERROR_PAUSE_TIME_MS=1*60*1000;
 
 	private static boolean verbose;
 	private Integer maxMessageAgeDays;
@@ -165,11 +166,14 @@ public class ImapCopy {
 			destinationFolderMeta=destinationConnection.getFolder(sourceFolder.getPathList());
 			logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+total+" messages]");
 			
+			long lastLogTime=System.currentTimeMillis();
+			
 			for (MessageMeta sourceMessageMeta: sourceMessageList) {
 				///////////////////////////////////////////////////////////////
-				//	LOG EVERY n OPERATIONS
+				//	LOG EVERY MINUTE
 				index++;
-				if (index%100==0) {
+				if (System.currentTimeMillis()-lastLogTime>60*1000) {
+					lastLogTime=System.currentTimeMillis();
 					logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+index+"/"+total+"]["+failed+" failed]");
 				}
 				///////////////////////////////////////////////////////////////
@@ -181,16 +185,15 @@ public class ImapCopy {
 						destinationConnection.appendRawMessage(raw, destinationFolderMeta, sourceMessageMeta.getMessageId());
 					}
 					catch (MessagingException | IOException e) {
-						logger.log(Level.WARN, "[appendMessages][exception][try: "+retry+"]",e);
+						logger.log(Level.WARN, "[appendMessages][exception]["+sourceMessageMeta.getMessageId()+"][try: "+retry+"]",e);
 
-						if (retry<COPY_RETRY_COUNT-1) {
-							sourceConnection.disconnect();
-							destinationConnection.disconnect();
-							Thread.sleep(5*1000);
-							sourceConnection.connect();
-							destinationConnection.connect();							
-						}
-						else {
+						sourceConnection.disconnect();
+						destinationConnection.disconnect();
+						Thread.sleep(ON_ERROR_PAUSE_TIME_MS);
+						sourceConnection.connect();
+						destinationConnection.connect();
+						
+						if (retry==COPY_RETRY_COUNT-1) {
 							failed++;
 							continue;
 						}
