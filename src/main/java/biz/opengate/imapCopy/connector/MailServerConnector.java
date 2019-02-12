@@ -22,24 +22,19 @@ public abstract class MailServerConnector {
 	//	ABSTRACTS
 	
 	public abstract void connect() throws Exception;
-	public abstract void disconnect();
+	public abstract void disconnect();	
+	public abstract HashSet<String> getAllFoldersPaths() throws Exception;
 	/**
 	 * @param maxMessageAgeDays if null, returns all the messages
 	 * @return
 	 */
-	public abstract HashSet<MessageMeta> getMessages(Integer maxMessageAgeDays) throws Exception;
-	/**
-	 * removes from messageSet the messages already present, using the header Message-ID to match messages 
-	 * @param maxMessageAgeDays if null, parse all messages
-	 * @param messageSet
-	 * @throws Exception
-	 */
-	public abstract void ignorePresentMessages(Integer maxMessageAgeDays, HashSet<MessageMeta> messageSet) throws Exception;
+	public abstract HashSet<MessageMeta> getMessages(String folderPath, Integer maxMessageAgeDays, HashSet<String> idToIgnore) throws Exception;
+	public abstract boolean checkMessageByMessageId(String messageId) throws Exception;
 	public abstract void generatePathIfInexistent(List<String> path) throws Exception;
 	public abstract RawMessage getRawMessage(MessageMeta messageMeta) throws Exception;
-	public abstract FolderMeta getFolder(List<String> path) throws Exception;
 	public abstract void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws Exception;
-	
+	public abstract FolderMeta getFolder(List<String> path) throws Exception;
+
 
 	////////////////////////////////////////////////////////////////////////////////////////
 	//	GETTERS / SETTERS

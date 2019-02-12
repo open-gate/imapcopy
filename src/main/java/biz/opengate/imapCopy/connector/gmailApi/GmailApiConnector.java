@@ -70,7 +70,7 @@ public class GmailApiConnector extends MailServerConnector {
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	OVERRIDES
-	
+
 	@Override
 	public void connect() throws Exception {
 		final String credentialsFilePath=getConfiguration().get("credentialsFilePath").getAsString();
@@ -107,42 +107,28 @@ public class GmailApiConnector extends MailServerConnector {
 	}
 
 	@Override
-	public HashSet<MessageMeta> getMessages(Integer maxMessageAgeDays) throws Exception {
+	public HashSet<MessageMeta> getMessages(String folderPath, Integer maxMessageAgeDays, HashSet<String> idToIgnore) throws Exception {
 		HashSet<MessageMeta> result=new HashSet<MessageMeta>();
 		List<GmailApiMessageMeta> childMessages = getChildMessages(maxMessageAgeDays);
 		logger.info("[getMessages]["+childMessages.size()+" messages]");
 			
 		for (GmailApiMessageMeta childMessage: childMessages) {
-			if (childMessage.getMessageId()!=null) {
+			if (childMessage.getMessageId()==null) continue;
+			boolean wasNotPresent = idToIgnore.add(childMessage.getMessageId());
+			if (wasNotPresent) {
 				result.add(childMessage);
 			}
 		}
 		
 		return result;
 	}
-
+	
 	@Override
-	public void ignorePresentMessages(Integer maxMessageAgeDays, HashSet<MessageMeta> messageSet) throws Exception {
-		final int total=messageSet.size();
-		int index=0;
-		int ignored=0;
-
-		Iterator<MessageMeta> iterator = messageSet.iterator();
-		
-		while (iterator.hasNext()) {
-			index++;
-			if (index%500==0) {
-				logger.info("[ignorePresentMessages]["+index+"/"+total+"]["+ignored+" ignored]");
-			}
-
-			MessageMeta meta = iterator.next();
-			final String messageId=meta.getMessageId();
-			
-			if (checkMessageByMessageId(messageId)) {
-				iterator.remove();
-				ignored++;
-			}
-		}
+	public boolean checkMessageByMessageId(String messageId) throws IOException {
+		final String query="rfc822msgid:"+messageId;
+		ListMessagesResponse response = service.users().messages().list("me").setQ(query).execute();
+		List<Message> messages = response.getMessages();
+		return (messages!=null) && (!messages.isEmpty());
 	}
 
 	@Override
@@ -152,12 +138,65 @@ public class GmailApiConnector extends MailServerConnector {
 				generateLabel(path,depth);
 			}
 			catch (ReservedFolderNameException e) {
-				logger.info("[generatePathIfInexistent][reserved folder name]["+path.get(depth)+"]");
+				logger.debug("[generatePathIfInexistent][reserved folder name]["+path.get(depth)+"]");
 				path.set(depth, "IMAP_"+path.get(depth));
 				generateLabel(path,depth);
 			}
 		}
 	}
+
+	@Override
+	public FolderMeta getFolder(List<String> path) throws Exception {
+		final String completePath=formatPath(path);
+	
+		ListLabelsResponse listResponse = service.users().labels().list("me").execute();
+        List<Label> labels = listResponse.getLabels();
+        
+        for (Label label: labels) {
+        	if (completePath.toLowerCase().equals(label.getName().toLowerCase())) {
+        		GmailApiFolderMeta meta=new GmailApiFolderMeta(label);
+        		return meta;
+        	}
+        }
+        
+		return null;
+	}
+
+	@Override
+	public HashSet<String> getAllFoldersPaths() throws Exception {
+		ListLabelsResponse listResponse = service.users().labels().list("me").execute();
+        List<Label> labels = listResponse.getLabels();
+        HashSet<String> result=new HashSet<String>();
+
+        for (Label label : labels) {
+        	result.add(label.getName());
+        }
+        
+        return result;
+	}
+
+	@Override
+	public RawMessage getRawMessage(MessageMeta messageMeta) throws Exception {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws Exception {
+		GmailApiFolderMeta casted=(GmailApiFolderMeta) destinationFolderMeta;
+		Message message = new Message();
+		message.encodeRaw(raw.getRaw());
+		message.setLabelIds(Arrays.asList(casted.getLabel().getId()));
+		
+		service.users().messages().gmailImport("me",message)
+			.setInternalDateSource("dateHeader")								//do not add a gmail Received header
+			.execute();
+		
+//		message = service.users().messages().insert("me", message).execute();	//sets incorrect Received header
+	}
+	
+
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//	PRIVATE UTILITIES
 	
 	private void generateLabel(List<String> path, int depth) throws Exception {
 		try {
@@ -184,46 +223,6 @@ public class GmailApiConnector extends MailServerConnector {
 			throw new ReservedFolderNameException(e);
 		}
 	}
-
-	@Override
-	public FolderMeta getFolder(List<String> path) throws Exception {
-		final String completePath=formatPath(path);
-	
-		ListLabelsResponse listResponse = service.users().labels().list("me").execute();
-        List<Label> labels = listResponse.getLabels();
-        
-        for (Label label: labels) {
-        	if (completePath.toLowerCase().equals(label.getName().toLowerCase())) {
-        		GmailApiFolderMeta meta=new GmailApiFolderMeta(label);
-        		return meta;
-        	}
-        }
-        
-		return null;
-	}
-	
-	@Override
-	public RawMessage getRawMessage(MessageMeta messageMeta) throws Exception {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws Exception {
-		GmailApiFolderMeta casted=(GmailApiFolderMeta) destinationFolderMeta;
-		Message message = new Message();
-		message.encodeRaw(raw.getRaw());
-		message.setLabelIds(Arrays.asList(casted.getLabel().getId()));
-		
-		service.users().messages().gmailImport("me",message)
-			.setInternalDateSource("dateHeader")								//do not add a gmail Received header
-			.execute();
-		
-//		message = service.users().messages().insert("me", message).execute();	//sets incorrect Received header
-	}
-	
-
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//	PRIVATE UTILITIES
 	
 	@SuppressWarnings("unused")
 	private void debugLogMessage(GmailApiMessageMeta messageMeta) {
@@ -265,13 +264,6 @@ public class GmailApiConnector extends MailServerConnector {
 		return completePath; 
 	}
 		
-	private boolean checkMessageByMessageId(String messageId) throws IOException {
-		final String query="rfc822msgid:"+messageId;
-		ListMessagesResponse response = service.users().messages().list("me").setQ(query).execute();
-		List<Message> messages = response.getMessages();
-		return (messages!=null) && (!messages.isEmpty());
-	}
-
     private List<GmailApiMessageMeta> getChildMessages(Integer maxMessageAgeDays) throws IOException {
     	if (maxMessageAgeDays==null) {
     		return listAllMessages();

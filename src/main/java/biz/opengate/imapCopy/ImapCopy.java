@@ -5,7 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.List;
 
 import javax.mail.MessagingException;
 
@@ -28,7 +27,6 @@ import com.google.gson.JsonSyntaxException;
 
 import biz.opengate.imapCopy.connector.FolderMeta;
 import biz.opengate.imapCopy.connector.MailServerConnector;
-import biz.opengate.imapCopy.connector.MessageBag;
 import biz.opengate.imapCopy.connector.MessageMeta;
 import biz.opengate.imapCopy.connector.RawMessage;
 import biz.opengate.imapCopy.connector.gmailApi.GmailApiConnector;
@@ -41,7 +39,7 @@ public class ImapCopy {
 	private static final Logger logger = LogManager.getLogger();
 	
 	private static final long COPY_RETRY_COUNT=3;
-	private static final long ON_ERROR_PAUSE_TIME_MS=1*60*1000;
+	private static final long ON_ERROR_PAUSE_TIME_MS=5*60*1000;
 
 	private static boolean verbose;
 	private Integer maxMessageAgeDays;
@@ -101,111 +99,90 @@ public class ImapCopy {
 	public void doWork() throws Exception {		
 		sourceConnection=getConnector("source");
 		destinationConnection=getConnector("destination");
+
+		logger.info("[doWork][reading source folders]");
+		sourceConnection.connect();
+		HashSet<String> allFoldersPaths = sourceConnection.getAllFoldersPaths();		
+		sourceConnection.disconnect();
 		
-		///////////////////////////////////////////////////////////////////////
-		//	READ THE SOURCE
-		HashSet<MessageMeta> messageSet=null;
+		HashSet<String> idToIgnore=new HashSet<String>();
 		
-		try {
-			logger.info("[imapCopy][getting source messages]");
-			sourceConnection.connect();
-			messageSet=sourceConnection.getMessages(maxMessageAgeDays);
-			logger.info("[imapCopy]["+messageSet.size()+" messages found in source account]");
-		}
-		finally {
+		for (String sourcePath: allFoldersPaths) {
+			sourceConnection.connect();			
+			HashSet<MessageMeta> messageSet=sourceConnection.getMessages(sourcePath,maxMessageAgeDays,idToIgnore);
 			sourceConnection.disconnect();
-		}
-		///////////////////////////////////////////////////////////////////////
-		///////////////////////////////////////////////////////////////////////
-		//	READ THE DESTINATION
-		try {
-			logger.info("[imapCopy][ignoring messages present in destination]");
-			destinationConnection.connect();
-			destinationConnection.ignorePresentMessages(maxMessageAgeDays, messageSet);
-			logger.info("[imapCopy]["+messageSet.size()+" messages to copy to destination account]");
-		}
-		finally {
-			destinationConnection.disconnect();
-		}
-		///////////////////////////////////////////////////////////////////////
-		///////////////////////////////////////////////////////////////////////
-		//	GENERATE DESTINATION FOLDERS
-		MessageBag messageBag=Utilities.toMessageBag(messageSet);
-		try {
-			logger.info("[imapCopy][generating destination folders]");
 			
-			destinationConnection.connect();
-			for (FolderMeta folder: messageBag.keySet()) {
-				destinationConnection.generatePathIfInexistent(folder.getPathList());
+			if (messageSet.isEmpty()) {
+				continue;
 			}
-		}
-		finally {
+		
+			final MessageMeta messageMeta = Utilities.getFirst(messageSet);
+			final FolderMeta folderMeta = messageMeta.getFolderMeta();
+
+			destinationConnection.connect();
+			destinationConnection.generatePathIfInexistent(folderMeta.getPathList());
+			destinationConnection.disconnect();			
+
+			sourceConnection.connect();
+			destinationConnection.connect();
+			appendMessages(folderMeta, messageSet);
+			sourceConnection.disconnect();
 			destinationConnection.disconnect();
 		}
-		///////////////////////////////////////////////////////////////////////
-		///////////////////////////////////////////////////////////////////////
-		//	APPEND MESSAGES
-		logger.info("[imapCopy][appending messages]");
-		
-		for (FolderMeta folder: messageBag.keySet()) {
-			appendMessages(folder, messageBag.get(folder));
-		}
-		///////////////////////////////////////////////////////////////////////
 	}
 
-	private void appendMessages(FolderMeta sourceFolder, List<MessageMeta> sourceMessageList) throws Exception {
-		try {
-			FolderMeta destinationFolderMeta=null;
-			final int total=sourceMessageList.size();
-			int index=0;
-			int failed=0;
-			
-			sourceConnection.connect();
-			destinationConnection.connect();
-			
-			destinationFolderMeta=destinationConnection.getFolder(sourceFolder.getPathList());
-			logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+total+" messages]");
-			
-			long lastLogTime=System.currentTimeMillis();
-			
-			for (MessageMeta sourceMessageMeta: sourceMessageList) {
-				///////////////////////////////////////////////////////////////
-				//	LOG EVERY MINUTE
-				index++;
-				if (System.currentTimeMillis()-lastLogTime>60*1000) {
-					lastLogTime=System.currentTimeMillis();
-					logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+index+"/"+total+"]["+failed+" failed]");
-				}
-				///////////////////////////////////////////////////////////////
-				///////////////////////////////////////////////////////////////
-				//	COPY THE MESSAGE
-				for (int retry=0; retry<COPY_RETRY_COUNT; retry++) {
-					try {
-						RawMessage raw = sourceConnection.getRawMessage(sourceMessageMeta);
-						destinationConnection.appendRawMessage(raw, destinationFolderMeta, sourceMessageMeta.getMessageId());
+	private void appendMessages(FolderMeta sourceFolder, HashSet<MessageMeta> sourceMessageList) throws Exception {
+		final FolderMeta destinationFolderMeta=destinationConnection.getFolder(sourceFolder.getPathList());
+		final int total=sourceMessageList.size();
+		int index=0;
+		int copied=0;
+		int ignored=0;
+		int failed=0;
+		long lastLogTime=0;		
+				
+		for (MessageMeta sourceMessageMeta: sourceMessageList) {
+			///////////////////////////////////////////////////////////////////
+			//	COPY THE MESSAGE
+			for (int retry=0; retry<COPY_RETRY_COUNT; retry++) {
+				try {
+					if (destinationConnection.checkMessageByMessageId(sourceMessageMeta.getMessageId())) {
+						ignored++;
+						break;
 					}
-					catch (MessagingException | IOException e) {
-						logger.log(Level.WARN, "[appendMessages][exception]["+sourceMessageMeta.getMessageId()+"][try: "+retry+"]",e);
+					
+					RawMessage raw = sourceConnection.getRawMessage(sourceMessageMeta);
+					destinationConnection.appendRawMessage(raw, destinationFolderMeta, sourceMessageMeta.getMessageId());
+					copied++;
+					break;
+				}
+				catch (Exception e) {
+					logger.log(Level.WARN, "[appendMessages][exception]["+sourceMessageMeta.getMessageId()+"][try: "+retry+"]",e);
 
-						sourceConnection.disconnect();
-						destinationConnection.disconnect();
-						Thread.sleep(ON_ERROR_PAUSE_TIME_MS);
-						sourceConnection.connect();
-						destinationConnection.connect();
-						
-						if (retry==COPY_RETRY_COUNT-1) {
-							failed++;
-							continue;
-						}
+					sourceConnection.disconnect();
+					destinationConnection.disconnect();
+					Thread.sleep(ON_ERROR_PAUSE_TIME_MS);
+					sourceConnection.connect();
+					destinationConnection.connect();
+					
+					if (retry==COPY_RETRY_COUNT-1) {
+						failed++;
+						break;
 					}
 				}
-				///////////////////////////////////////////////////////////////
 			}
+			///////////////////////////////////////////////////////////////////
+			///////////////////////////////////////////////////////////////////
+			//	LOG EVERY MINUTE
+			index++;
+			if (System.currentTimeMillis()-lastLogTime>60*1000) {
+				lastLogTime=System.currentTimeMillis();
+				final int percentage=(int)(index/((double)total)*100);
+				logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+percentage+"%]["+copied+" copied]["+ignored+" ignored]["+failed+" failed]");
+			}
+			///////////////////////////////////////////////////////////////////
 		}
-		finally {			
-			sourceConnection.disconnect();
-			destinationConnection.disconnect();
-		}
+		
+		logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+100+"%]["+copied+" copied]["+ignored+" ignored]["+failed+" failed]");
 	}
 	
 	private MailServerConnector getConnector(String connectionName) {
@@ -230,7 +207,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("[imapCopy][1.8][start]");
+			logger.info("[imapCopy][1.10][start]");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWork();
 			final long endTime=System.currentTimeMillis();

@@ -3,23 +3,21 @@ package biz.opengate.imapCopy;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Locale;
 
 import javax.mail.Address;
 import javax.mail.MessagingException;
 
-import biz.opengate.imapCopy.connector.MessageBag;
-import biz.opengate.imapCopy.connector.MessageMeta;
-
 public class Utilities {
 	public static final String MESSAGE_ID_HEADER_NAME="Message-ID";
-
-	public static MessageBag toMessageBag(HashSet<MessageMeta> messageSet) throws Exception {
-		MessageBag bag=new MessageBag();		
-		for (MessageMeta m: messageSet) {
-			bag.push(m);
+	
+	public static <T> T getFirst(HashSet<T> messageSet) {
+		Iterator<T> iterator = messageSet.iterator();
+		if (!iterator.hasNext()) {
+			return null;
 		}
-		return bag;
+		return iterator.next();
 	}
 
 	public static String formatAddresses(Address[] addressArray) throws MessagingException {

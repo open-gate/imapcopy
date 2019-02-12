@@ -3,6 +3,7 @@ package biz.opengate.imapCopy.connector.javaxMail;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -21,6 +22,7 @@ import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.Store;
 import javax.mail.internet.MimeMessage;
+import javax.mail.search.MessageIDTerm;
 import javax.mail.search.ReceivedDateTerm;
 
 import org.apache.commons.mail.util.MimeMessageUtils;
@@ -111,88 +113,83 @@ public class JavaxMailConnector extends MailServerConnector {
 			logger.log(Level.WARN,"["+getConnectionName()+"][disconnect]",e);
 		}
 	}
-
+	
 	@Override
-	public HashSet<MessageMeta> getMessages(Integer maxMessageAgeDays) throws MessagingException {
-		HashSet<MessageMeta> result=new HashSet<MessageMeta>();
+	public HashSet<String> getAllFoldersPaths() throws MessagingException {
+		HashSet<String> result=new HashSet<String>();
 		Stack<Folder> stack=new Stack<Folder>();
 		stack.push(getRoot());
 				
 		while (!stack.isEmpty()) {
 			Folder folder=stack.pop();
-			if (ImapCopy.isVerbose()) {
-				logger.info("[getMessages]["+folder.getFullName()+"]");
-			}
-			
+			result.add(folder.getFullName());
 			pushAllChildren(folder,stack);
-			
-			///////////////////////////////////////////////////////////////////
-			//	READ CHILD MESSAGES
-			if (canHoldMessages(folder)) {
-				try {
-					folder.open(Folder.READ_ONLY);
-					Message[] childMessages = getChildMessages(folder, maxMessageAgeDays);
-					logger.info("[getMessages]["+folder.getFullName()+"]["+childMessages.length+" messages]");
-					prefetchMessageIds(folder, childMessages);
-
-					for (Message childMessage: childMessages) {
-						MessageMeta mm=new JavaxMailMessageMeta(childMessage);
-						if (mm.getMessageId()!=null) {
-							result.add(mm);
-						}
-					}
-				}
-				finally {				
-					folder.close();
-				}
-			}
-			///////////////////////////////////////////////////////////////////
 		}
 		
+		return result;	
+	}
+		
+	@Override
+	public HashSet<MessageMeta> getMessages(String folderPath, Integer maxMessageAgeDays, HashSet<String> idToIgnore) throws Exception {
+		JavaxMailFolderMeta folderMeta = getFolder(folderPath);
+		Folder folder=folderMeta.getFolder();
+
+		HashSet<MessageMeta> result=new HashSet<MessageMeta>();
+
+		if (ImapCopy.isVerbose()) {
+			logger.info("[getMessages]["+folder.getFullName()+"]");
+		}
+		
+		if (!canHoldMessages(folder)) {
+			return result;
+		}
+		
+		try {
+			folder.open(Folder.READ_ONLY);
+			Message[] childMessages = getChildMessages(folder, maxMessageAgeDays);
+			logger.info("[getMessages]["+folder.getFullName()+"]["+childMessages.length+" messages]");
+			prefetchMessageIds(folder, childMessages);
+
+			for (Message childMessage: childMessages) {
+				MessageMeta mm=new JavaxMailMessageMeta(childMessage);
+				if (mm.getMessageId()==null) continue;
+				boolean wasNotPresent = idToIgnore.add(mm.getMessageId());
+				if (wasNotPresent) {				
+					result.add(mm);
+				}
+			}
+		}
+		finally {				
+			folder.close();
+		}
+				
 		return result;
 	}
-	
+		
 	@Override
-	public void ignorePresentMessages(Integer maxMessageAgeDays, HashSet<MessageMeta> messageSet) throws MessagingException {
+	public boolean checkMessageByMessageId(String messageId) throws MessagingException {
 		Stack<Folder> stack=new Stack<Folder>();
 		stack.push(getRoot());
-		
+				
 		while (!stack.isEmpty()) {
 			Folder folder=stack.pop();
-			if (ImapCopy.isVerbose()) {
-				logger.info("[ignorePresentMessages]["+folder.getFullName()+"]");
-			}
-
 			pushAllChildren(folder,stack);
-
-			///////////////////////////////////////////////////////////////////
-			//	READ CHILD MESSAGES
+			
 			if (canHoldMessages(folder)) {
 				try {
 					folder.open(Folder.READ_ONLY);
-					Message[] childMessages = getChildMessages(folder, maxMessageAgeDays);
-					logger.info("[ignorePresentMessages]["+folder.getFullName()+"]["+childMessages.length+" messages]");
-					prefetchMessageIds(folder, childMessages);
-					
-					for (Message childMessage: childMessages) {
-						try {
-							MessageMeta key=new JavaxMailMessageMeta(childMessage);
-							if (key.getMessageId()==null) continue;
-							messageSet.remove(key);
-						}
-						catch (Exception e) {
-							logger.log(Level.WARN,"[ignorePresentMessages]",e);
-						}
-					}
+					Message[] search = folder.search(new MessageIDTerm(messageId));
+					if (search!=null && search.length!=0) return true;
 				}
 				finally {				
 					folder.close();
 				}
 			}
-			///////////////////////////////////////////////////////////////////
 		}
-	}
 		
+		return false;
+	}
+			
 	@Override
 	public void generatePathIfInexistent(List<String> path) throws MessagingException {
 		JavaxMailFolderMeta destinationFolderMeta=getFolder(path);
@@ -207,7 +204,7 @@ public class JavaxMailConnector extends MailServerConnector {
 			}
 		}
 	}
-
+	
 	@Override
 	public JavaxMailFolderMeta getFolder(List<String> path) throws MessagingException {
 		Folder folder=getRoot();
@@ -217,18 +214,22 @@ public class JavaxMailConnector extends MailServerConnector {
 		
 		return new JavaxMailFolderMeta(folder);
 	}
-
+	
 	@Override
 	public RawMessage getRawMessage(MessageMeta messageMeta) throws IOException, MessagingException {
-		logger.debug("[getRawMessage] "+messageMeta.getMessageId());
+		logger.debug("[getRawMessageReload] "+messageMeta.getMessageId());
+		final JavaxMailMessageMeta casted=(JavaxMailMessageMeta) messageMeta;
 		
-		JavaxMailMessageMeta casted=(JavaxMailMessageMeta) messageMeta;
 		Folder folder=casted.getMessage().getFolder();
+		folder=getFolder(folder.getFullName()).getFolder();										//reload the folder
 		
 		try {
 			folder.open(Folder.READ_ONLY);
+
+			Message[] search = folder.search(new MessageIDTerm(casted.getMessageId()));			//reload the message
 			baos.reset();
-			casted.getMessage().writeTo(baos);
+			search[0].writeTo(baos);
+
 			RawMessage result=new RawMessage();
 			result.setRaw(baos.toByteArray());
 			return result;
@@ -262,6 +263,11 @@ public class JavaxMailConnector extends MailServerConnector {
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	PRIVATE UTILITIES
+	
+	private JavaxMailFolderMeta getFolder(String folderCompletePath) throws MessagingException {
+		List<String> pathList=Arrays.asList(folderCompletePath.split("/"));
+		return getFolder(pathList);
+	}
 	
 	@SuppressWarnings("unused")
 	private void debugLogMessage(JavaxMailMessageMeta messageMeta) throws MessagingException {
@@ -317,11 +323,11 @@ public class JavaxMailConnector extends MailServerConnector {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	GETTERS / SETTERS
 
-	public Folder getRoot() throws MessagingException {
+	private Folder getRoot() throws MessagingException {
 		return store.getDefaultFolder();
 	}	
 	
-	public Session getSession() {
+	private Session getSession() {
 		return session;
 	}
 }
