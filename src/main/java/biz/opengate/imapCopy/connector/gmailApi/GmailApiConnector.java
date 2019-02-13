@@ -94,7 +94,7 @@ public class GmailApiConnector extends MailServerConnector {
 	    service = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, googleCredentials).setApplicationName(APPLICATION_NAME).build();
 
 	    if (ImapCopy.isVerbose()) {
-	    	logger.info("["+getConnectionName()+"][connect][connecting][gmailApi]["+userName+"]");
+	    	logger.info(getConnectionName()+"|connect|connecting|gmailApi|"+userName);
 	    }
 	}
 
@@ -102,7 +102,7 @@ public class GmailApiConnector extends MailServerConnector {
 	public void disconnect() {
 		service=null;
 		if (ImapCopy.isVerbose()) {
-			logger.info("["+getConnectionName()+"][disconnect][disconnected]");
+			logger.info(getConnectionName()+"|disconnect|disconnected");
 		}		
 	}
 
@@ -110,7 +110,7 @@ public class GmailApiConnector extends MailServerConnector {
 	public HashSet<MessageMeta> getMessages(String folderPath, Integer maxMessageAgeDays, HashSet<String> idToIgnore) throws Exception {
 		HashSet<MessageMeta> result=new HashSet<MessageMeta>();
 		List<GmailApiMessageMeta> childMessages = getChildMessages(maxMessageAgeDays);
-		logger.info("[getMessages]["+childMessages.size()+" messages]");
+		logger.info("getMessages|"+childMessages.size()+" messages");
 			
 		for (GmailApiMessageMeta childMessage: childMessages) {
 			if (childMessage.getMessageId()==null) continue;
@@ -138,7 +138,7 @@ public class GmailApiConnector extends MailServerConnector {
 				generateLabel(path,depth);
 			}
 			catch (ReservedFolderNameException e) {
-				logger.debug("[generatePathIfInexistent][reserved folder name]["+path.get(depth)+"]");
+				logger.debug("generatePathIfInexistent|reserved folder name|"+path.get(depth));
 				path.set(depth, "IMAP_"+path.get(depth));
 				generateLabel(path,depth);
 			}
@@ -207,7 +207,7 @@ public class GmailApiConnector extends MailServerConnector {
 			if (folder!=null) return;
 			
 			final String completePath=formatPath(tmp);
-			logger.info("[generateLabel][generating: "+completePath+"]");
+			logger.info("generateLabel|generating: "+completePath);
 			
 			Label label=new Label();
 			label.setName(completePath);

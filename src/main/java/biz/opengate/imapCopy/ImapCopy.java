@@ -85,7 +85,7 @@ public class ImapCopy {
             
             configurationFile=new File(cmd.getOptionValue("config"));
             
-   			logger.info("[arguments][verbose: "+verbose+"][maxMessageAgeDays: "+maxMessageAgeDays+"][configurationFile: "+configurationFile.getAbsolutePath()+"]");
+   			logger.info("arguments|verbose: "+verbose+"|maxMessageAgeDays: "+maxMessageAgeDays+"|configurationFile: "+configurationFile.getAbsolutePath());
         } 
         catch (ParseException e) {
             System.out.println(e.getMessage());
@@ -99,7 +99,7 @@ public class ImapCopy {
 		sourceConnection=getConnector("source");
 		destinationConnection=getConnector("destination");
 
-		logger.info("[doWork][reading source folders]");
+		logger.info("doWork|reading source folders");
 		sourceConnection.connect();
 		HashSet<String> allFoldersPaths = sourceConnection.getAllFoldersPaths();		
 		sourceConnection.disconnect();
@@ -145,7 +145,7 @@ public class ImapCopy {
 			for (int retry=0; retry<COPY_RETRY_COUNT; retry++) {
 				try {
 					if (retry!=0) {
-						logger.info("[appendMessages]["+sourceMessageMeta.getMessageId()+"][retry: "+retry+"]");
+						logger.info("appendMessages|"+sourceMessageMeta.getMessageId()+"|retry: "+retry);
 					}
 										
 					if (destinationConnection.checkMessageByMessageId(sourceMessageMeta.getMessageId())) {
@@ -159,7 +159,7 @@ public class ImapCopy {
 					break;
 				}
 				catch (Exception e) {
-					logger.log(Level.WARN, "[appendMessages][exception]["+sourceMessageMeta.getMessageId()+"][try: "+retry+"]",e);
+					logger.log(Level.WARN, "appendMessages|exception|"+sourceMessageMeta.getMessageId()+"|try: "+retry,e);
 
 					sourceConnection.disconnect();
 					destinationConnection.disconnect();
@@ -180,12 +180,12 @@ public class ImapCopy {
 			if (System.currentTimeMillis()-lastLogTime>60*1000) {
 				lastLogTime=System.currentTimeMillis();
 				final int percentage=(int)(index/((double)total)*100);
-				logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+percentage+"%]["+copied+" copied]["+ignored+" ignored]["+failed+" failed]");
+				logger.info("appendMessages|"+destinationFolderMeta.getCompletePath()+"|"+percentage+"%|"+copied+" copied|"+ignored+" ignored|"+failed+" failed");
 			}
 			///////////////////////////////////////////////////////////////////
 		}
 		
-		logger.info("[appendMessages]["+destinationFolderMeta.getCompletePath()+"]["+100+"%]["+copied+" copied]["+ignored+" ignored]["+failed+" failed]");
+		logger.info("appendMessages|"+destinationFolderMeta.getCompletePath()+"|"+100+"%|"+copied+" copied|"+ignored+" ignored|"+failed+" failed");
 	}
 	
 	private MailServerConnector getConnector(String connectionName) {
@@ -210,14 +210,14 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("[imapCopy][1.10][start]");
+			logger.info("imapCopy|1.10|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWork();
 			final long endTime=System.currentTimeMillis();
-			logger.info("[imapCopy][done]["+(endTime-startTime)+" ms]");
+			logger.info("imapCopy|done|"+(endTime-startTime)+" ms");
 		}
 		catch (Exception e) {			
-			logger.log(Level.FATAL, "[imapCopy][errors]", e);
+			logger.log(Level.FATAL, "imapCopy|errors", e);
 		}
 	}
     

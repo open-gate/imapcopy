@@ -80,22 +80,22 @@ public class JavaxMailConnector extends MailServerConnector {
 			props.put(next.getKey(),next.getValue().getAsString());
 			
 			if (ImapCopy.isVerbose()) {
-				logger.info("["+getConnectionName()+"][connect][propertyFound]["+next.getKey()+"]["+next.getValue().getAsString()+"]");
+				logger.info(getConnectionName()+"|connect|propertyFound|"+next.getKey()+"|"+next.getValue().getAsString());
 			}
 		}
 		///////////////////////////////////////////////////////////////////
 
 		if (ImapCopy.isVerbose()) {
-			logger.info("["+getConnectionName()+"][connect][preparingSession]");
+			logger.info(getConnectionName()+"|connect|preparingSession");
 		}
 		session = Session.getDefaultInstance(props, null);
 		store = session.getStore(sessionStore);
 		if (ImapCopy.isVerbose()) {
-			logger.info("["+getConnectionName()+"][connect][connecting]["+host+"]["+username+"]");
+			logger.info(getConnectionName()+"|connect|connecting|"+host+"|"+username);
 		}
 		store.connect(host,username,password);
 		if (ImapCopy.isVerbose()) {
-			logger.info("["+getConnectionName()+"][connect][connected]");
+			logger.info(getConnectionName()+"|connect|connected");
 		}
 	}
 
@@ -106,11 +106,11 @@ public class JavaxMailConnector extends MailServerConnector {
 			store.close();
 			store=null;
 			if (ImapCopy.isVerbose()) {
-				logger.info("["+getConnectionName()+"][disconnect][disconnected]");
+				logger.info(getConnectionName()+"|disconnect|disconnected");
 			}
 		}
 		catch (Exception e) {
-			logger.log(Level.WARN,"["+getConnectionName()+"][disconnect]",e);
+			logger.log(Level.WARN,getConnectionName()+"|disconnect",e);
 		}
 	}
 	
@@ -137,7 +137,7 @@ public class JavaxMailConnector extends MailServerConnector {
 		HashSet<MessageMeta> result=new HashSet<MessageMeta>();
 
 		if (ImapCopy.isVerbose()) {
-			logger.info("[getMessages]["+folder.getFullName()+"]");
+			logger.info("getMessages|"+folder.getFullName());
 		}
 		
 		if (!canHoldMessages(folder)) {
@@ -147,7 +147,7 @@ public class JavaxMailConnector extends MailServerConnector {
 		try {
 			folder.open(Folder.READ_ONLY);
 			Message[] childMessages = getChildMessages(folder, maxMessageAgeDays);
-			logger.info("[getMessages]["+folder.getFullName()+"]["+childMessages.length+" messages]");
+			logger.info("getMessages|"+folder.getFullName()+"|"+childMessages.length+" messages");
 			prefetchMessageIds(folder, childMessages);
 
 			for (Message childMessage: childMessages) {
@@ -196,11 +196,11 @@ public class JavaxMailConnector extends MailServerConnector {
 		Folder destinationFolder=destinationFolderMeta.getFolder();
 		
 		if (!destinationFolder.exists()) {
-			logger.info("[generatePathIfInexistent][generating: "+destinationFolder.getFullName()+"]");
+			logger.info("generatePathIfInexistent|generating: "+destinationFolder.getFullName());
 			boolean result=destinationFolder.create(Folder.READ_WRITE | Folder.HOLDS_FOLDERS | Folder.HOLDS_MESSAGES);
 			
 			if (!result) {
-				throw new MessagingException("[generatePathIfInexistent][unable to generate path: "+destinationFolder.getFullName()+"]");
+				throw new MessagingException("generatePathIfInexistent|unable to generate path: "+destinationFolder.getFullName());
 			}
 		}
 	}
@@ -217,7 +217,7 @@ public class JavaxMailConnector extends MailServerConnector {
 	
 	@Override
 	public RawMessage getRawMessage(MessageMeta messageMeta) throws IOException, MessagingException {
-		logger.debug("[getRawMessageReload] "+messageMeta.getMessageId());
+		logger.debug("getRawMessageReload|"+messageMeta.getMessageId());
 		final JavaxMailMessageMeta casted=(JavaxMailMessageMeta) messageMeta;
 		
 		Folder folder=casted.getMessage().getFolder();
