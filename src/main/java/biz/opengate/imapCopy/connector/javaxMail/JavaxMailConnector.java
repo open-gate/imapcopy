@@ -221,12 +221,12 @@ public class JavaxMailConnector extends MailServerConnector {
 		final JavaxMailMessageMeta casted=(JavaxMailMessageMeta) messageMeta;
 		
 		Folder folder=casted.getMessage().getFolder();
-		folder=getFolder(folder.getFullName()).getFolder();										//reload the folder
+		folder=getFolder(folder.getFullName()).getFolder();										//reload the folder (slower but mandatory)
 		
 		try {
 			folder.open(Folder.READ_ONLY);
 
-			Message[] search = folder.search(new MessageIDTerm(casted.getMessageId()));			//reload the message
+			Message[] search = folder.search(new MessageIDTerm(casted.getMessageId()));			//reload the message (slower but mandatory)
 			baos.reset();
 			search[0].writeTo(baos);
 

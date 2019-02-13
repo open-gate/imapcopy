@@ -3,7 +3,6 @@ package biz.opengate.imapCopy;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.HashSet;
 
 import javax.mail.MessagingException;
@@ -145,6 +144,10 @@ public class ImapCopy {
 			//	COPY THE MESSAGE
 			for (int retry=0; retry<COPY_RETRY_COUNT; retry++) {
 				try {
+					if (retry!=0) {
+						logger.info("[appendMessages]["+sourceMessageMeta.getMessageId()+"][retry: "+retry+"]");
+					}
+										
 					if (destinationConnection.checkMessageByMessageId(sourceMessageMeta.getMessageId())) {
 						ignored++;
 						break;
