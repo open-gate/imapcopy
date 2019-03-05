@@ -190,7 +190,9 @@ public class JavaxMailConnector extends MailServerConnector {
 			AndTerm termAnd=new AndTerm(termGreater, termLower);
 			Message[] childMessages = folder.search(termAnd);
 			
-			logger.info("getMessages|"+folder.getFullName()+"|"+childMessages.length+" messages");
+			if (childMessages.length!=0) {
+				logger.info("getMessages|"+folder.getFullName()+"|"+childMessages.length+" messages");
+			}
 			prefetchMessageIds(folder, childMessages);
 
 			for (Message childMessage: childMessages) {

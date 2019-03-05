@@ -122,6 +122,7 @@ public class ImapCopy {
 		Date currentDay=startDate;
 		
 		while (currentDay.after(endDate)) {
+			logger.info("doWork|date:"+Utilities.formatDate(currentDay));
 			doDate(currentDay,allFoldersPaths,idToIgnore);
 			currentDay=Utilities.addDays(currentDay, -1);
 		}
@@ -130,17 +131,16 @@ public class ImapCopy {
 	private void doDate(Date currentDay, HashSet<String> allFoldersPaths, HashSet<String> idToIgnore) throws Exception {
 		for (String sourcePath: allFoldersPaths) {
 			if (StatusUtilities.isCompleted(currentDay, sourcePath)) {
-				logger.info("doDate|date:"+Utilities.formatDate(currentDay)+"|folder:"+sourcePath+"|alreadyDone");
 				continue;
 			}
-			
-			logger.info("doDate|date:"+Utilities.formatDate(currentDay)+"|folder:"+sourcePath);
-			
+
 			sourceConnection.connect();
 			HashSet<MessageMeta> messageSet=sourceConnection.getMessages(sourcePath,currentDay,idToIgnore);
 			sourceConnection.disconnect();
 			
 			if (!messageSet.isEmpty()) {
+				logger.info("doDate|date:"+Utilities.formatDate(currentDay)+"|folder:"+sourcePath+"|messages:"+messageSet.size());
+				
 				final MessageMeta messageMeta = Utilities.getFirst(messageSet);
 				final FolderMeta folderMeta = messageMeta.getFolderMeta();
 	
@@ -239,7 +239,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.12|start");
+			logger.info("imapCopy|1.13|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWork();
 			final long endTime=System.currentTimeMillis();
