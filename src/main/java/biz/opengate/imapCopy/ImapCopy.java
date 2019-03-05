@@ -123,7 +123,7 @@ public class ImapCopy {
 		HashSet<String> idToIgnore=new HashSet<String>();
 		
 		Date startDate=DateUtilities.stripTimeData(new Date());
-		Date endDate=DateUtilities.newDate(2015,1,1);
+		Date endDate=DateUtilities.newDate(2000,1,1);
 		if (maxMessageAgeDays!=null) {
 			endDate=DateUtilities.addDays(startDate, -maxMessageAgeDays);
 			endDate=DateUtilities.stripTimeData(endDate);
@@ -253,7 +253,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.16|start");
+			logger.info("imapCopy|1.17|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWork();
 			final long endTime=System.currentTimeMillis();
