@@ -7,6 +7,7 @@ import java.util.Date;
 
 import org.apache.commons.cli.ParseException;
 
+import biz.opengate.imapCopy.DateUtilities;
 import biz.opengate.imapCopy.Utilities;
 
 public class StatusUtilities {
@@ -15,7 +16,7 @@ public class StatusUtilities {
 	public static Status status;
 	
 	public static void setCompleted(Date date, String folder) throws FileNotFoundException {
-		final int dateInt=Utilities.getYearMonthDay(date);
+		final int dateInt=DateUtilities.getYearMonthDay(date);
 		StatusElement element=new StatusElement();
 		element.setDate(dateInt);
 		element.setFolder(folder);
@@ -24,7 +25,7 @@ public class StatusUtilities {
 	}
 	
 	public static boolean isCompleted(Date date, String folder) throws FileNotFoundException {
-		final int dateInt=Utilities.getYearMonthDay(date);
+		final int dateInt=DateUtilities.getYearMonthDay(date);
 		for (StatusElement element: status.getCompletedElements()) {
 			if (element.getDate()==dateInt && folder.equals(element.getFolder())) return true;
 		}

@@ -34,6 +34,7 @@ import org.apache.logging.log4j.Logger;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import biz.opengate.imapCopy.DateUtilities;
 import biz.opengate.imapCopy.ImapCopy;
 import biz.opengate.imapCopy.Utilities;
 import biz.opengate.imapCopy.connector.FolderMeta;
@@ -322,8 +323,8 @@ public class JavaxMailConnector extends MailServerConnector {
 		logger.info("from        : "+Utilities.formatAddresses(msg.getFrom()));
 		logger.info("recipients  : "+Utilities.formatAddresses(msg.getAllRecipients()));
 		logger.info("replyTo     : "+Utilities.formatAddresses(msg.getReplyTo()));
-		logger.info("receivedDate: "+Utilities.formatDate(msg.getReceivedDate()));
-		logger.info("sentDate    : "+Utilities.formatDate(msg.getSentDate()));
+		logger.info("receivedDate: "+DateUtilities.formatDateTime(msg.getReceivedDate()));
+		logger.info("sentDate    : "+DateUtilities.formatDateTime(msg.getSentDate()));
 		logger.info("rfc822msgid:"+messageMeta.getMessageId());			
 		logger.info("-----------------------------------");
 		msg.getFolder().close();

@@ -114,17 +114,17 @@ public class ImapCopy {
 		
 		HashSet<String> idToIgnore=new HashSet<String>();
 		
-		Date startDate=Utilities.stripTimeData(new Date());
-		Date endDate=Utilities.newDate(2015,1,1);
+		Date startDate=DateUtilities.stripTimeData(new Date());
+		Date endDate=DateUtilities.newDate(2015,1,1);
 		if (maxMessageAgeDays!=null) {
-			endDate=Utilities.addDays(startDate, -maxMessageAgeDays);
+			endDate=DateUtilities.addDays(startDate, -maxMessageAgeDays);
 		}
 		Date currentDay=startDate;
 		
 		while (currentDay.after(endDate)) {
-			logger.info("doWork|date:"+Utilities.formatDate(currentDay));
+			logger.info("doWork|date:"+DateUtilities.formatDate(currentDay));
 			doDate(currentDay,allFoldersPaths,idToIgnore);
-			currentDay=Utilities.addDays(currentDay, -1);
+			currentDay=DateUtilities.addDays(currentDay, -1);
 		}
 	}
 	
@@ -139,7 +139,7 @@ public class ImapCopy {
 			sourceConnection.disconnect();
 			
 			if (!messageSet.isEmpty()) {
-				logger.info("doDate|date:"+Utilities.formatDate(currentDay)+"|folder:"+sourcePath+"|messages:"+messageSet.size());
+				logger.info("doDate|date:"+DateUtilities.formatDate(currentDay)+"|folder:"+sourcePath+"|messages:"+messageSet.size());
 				
 				final MessageMeta messageMeta = Utilities.getFirst(messageSet);
 				final FolderMeta folderMeta = messageMeta.getFolderMeta();
@@ -239,7 +239,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.13|start");
+			logger.info("imapCopy|1.15|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWork();
 			final long endTime=System.currentTimeMillis();
