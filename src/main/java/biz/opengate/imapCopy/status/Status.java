@@ -4,7 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class Status {
-
+	private long totalExecutionTimeMs=0;
 	private List<StatusElement> completedElements=new LinkedList<StatusElement>();
 
 	public List<StatusElement> getCompletedElements() {
@@ -13,5 +13,13 @@ public class Status {
 
 	public void setCompletedElements(List<StatusElement> completedElements) {
 		this.completedElements = completedElements;
-	}	
+	}
+
+	public long getTotalExecutionTimeMs() {
+		return totalExecutionTimeMs;
+	}
+
+	public void setTotalExecutionTimeMs(long totalExecutionTimeMs) {
+		this.totalExecutionTimeMs = totalExecutionTimeMs;
+	}
 }

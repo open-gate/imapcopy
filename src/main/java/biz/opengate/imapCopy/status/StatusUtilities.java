@@ -13,7 +13,10 @@ import biz.opengate.imapCopy.Utilities;
 public class StatusUtilities {
 	private static File statusFilesDir;
 	private static String statusFileName;
-	public static Status status;
+	private static Status status;
+	private static long startTimeMs;
+	private static long initialExecutionTimeMs;
+
 	
 	public static void setCompleted(Date date, String folder) throws FileNotFoundException {
 		final int dateInt=DateUtilities.getYearMonthDay(date);
@@ -33,14 +36,20 @@ public class StatusUtilities {
 	}
 
 	public static void load() throws IOException {
+		startTimeMs=System.currentTimeMillis();
+		initialExecutionTimeMs=0;
+
 		if (!getStatusFile().exists()) {
 			status=new Status();
 			return;
 		}
 		status=Utilities.unmarshall(getStatusFile(), Status.class);
+		initialExecutionTimeMs=status.getTotalExecutionTimeMs();
 	}
 	
 	private static void save() throws FileNotFoundException {
+		final long msElapsedSinceStart=System.currentTimeMillis()-startTimeMs;
+		status.setTotalExecutionTimeMs(initialExecutionTimeMs+msElapsedSinceStart);
 		Utilities.marshall(getStatusFile(), status);
 	}
 

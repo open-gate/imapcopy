@@ -106,7 +106,7 @@ public class ImapCopy {
 		destinationConnection=getConnector("destination");
 		StatusUtilities.setStatusFileName(sourceConnection.getDescription()+"-"+destinationConnection.getDescription()+".json");
 		StatusUtilities.load();
-				
+
 		logger.info("doWork|reading source folders");
 		sourceConnection.connect();
 		HashSet<String> allFoldersPaths = sourceConnection.getAllFoldersPaths();		
@@ -118,6 +118,7 @@ public class ImapCopy {
 		Date endDate=DateUtilities.newDate(2015,1,1);
 		if (maxMessageAgeDays!=null) {
 			endDate=DateUtilities.addDays(startDate, -maxMessageAgeDays);
+			endDate=DateUtilities.stripTimeData(endDate);
 		}
 		Date currentDay=startDate;
 		
@@ -125,6 +126,7 @@ public class ImapCopy {
 			logger.info("doWork|date:"+DateUtilities.formatDate(currentDay));
 			doDate(currentDay,allFoldersPaths,idToIgnore);
 			currentDay=DateUtilities.addDays(currentDay, -1);
+			currentDay=DateUtilities.stripTimeData(currentDay);
 		}
 	}
 	
@@ -167,6 +169,7 @@ public class ImapCopy {
 		int ignored=0;
 		int failed=0;
 		long lastLogTime=0;
+		int lastLoggedPercentage=-1;
 				
 		for (MessageMeta sourceMessageMeta: sourceMessageList) {
 			///////////////////////////////////////////////////////////////////
@@ -209,12 +212,15 @@ public class ImapCopy {
 			if (System.currentTimeMillis()-lastLogTime>60*1000) {
 				lastLogTime=System.currentTimeMillis();
 				final int percentage=(int)(index/((double)total)*100);
+				lastLoggedPercentage=percentage;
 				logger.info("appendMessages|"+destinationFolderMeta.getCompletePath()+"|"+percentage+"%|"+copied+" copied|"+ignored+" ignored|"+failed+" failed");
 			}
 			///////////////////////////////////////////////////////////////////
 		}
 		
-		logger.info("appendMessages|"+destinationFolderMeta.getCompletePath()+"|"+100+"%|"+copied+" copied|"+ignored+" ignored|"+failed+" failed");
+		if (lastLoggedPercentage!=100) {
+			logger.info("appendMessages|"+destinationFolderMeta.getCompletePath()+"|"+100+"%|"+copied+" copied|"+ignored+" ignored|"+failed+" failed");
+		}
 	}
 	
 	private MailServerConnector getConnector(String connectionName) {
