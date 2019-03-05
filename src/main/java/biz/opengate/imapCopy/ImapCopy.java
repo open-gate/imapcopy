@@ -39,7 +39,6 @@ public class ImapCopy {
 	private static final Logger logger = LogManager.getLogger();
 	
 	private static final long COPY_RETRY_COUNT=3;
-	private static final long ON_ERROR_PAUSE_TIME_MS=5*60*1000;
 
 	private static boolean verbose;
 	private Integer maxMessageAgeDays;
@@ -47,6 +46,7 @@ public class ImapCopy {
 	private JsonObject configuration;
 	private MailServerConnector sourceConnection;
 	private MailServerConnector destinationConnection;
+	private long onErrorPauseTimeSec=5*60;
 			
 	public ImapCopy(String[] args) throws MessagingException, JsonIOException, JsonSyntaxException, FileNotFoundException {
 		parseArguments(args);
@@ -78,7 +78,11 @@ public class ImapCopy {
             option = new Option("s", "statusFilesDir", true, "directory where status file will be saved");
             option.setRequired(true);
             options.addOption(option);
-        
+            
+            option = new Option("e", "onErrorPauseTimeSec", true, "time to wait after a copy error, in seconds. Default is 300");
+            option.setRequired(false);
+            options.addOption(option);
+            
         	CommandLineParser parser = new DefaultParser();
         	CommandLine cmd = parser.parse(options, args);
             
@@ -86,6 +90,10 @@ public class ImapCopy {
             
             if (cmd.hasOption("maxMessageAgeDays")) {
             	maxMessageAgeDays=Integer.valueOf(cmd.getOptionValue("maxMessageAgeDays"));
+            }
+            
+            if (cmd.hasOption("onErrorPauseTimeSec")) {
+            	onErrorPauseTimeSec=Long.valueOf(cmd.getOptionValue("onErrorPauseTimeSec"));
             }
             
             configurationFile=new File(cmd.getOptionValue("config"));
@@ -195,7 +203,7 @@ public class ImapCopy {
 
 					sourceConnection.disconnect();
 					destinationConnection.disconnect();
-					Thread.sleep(ON_ERROR_PAUSE_TIME_MS);
+					Thread.sleep(onErrorPauseTimeSec*1000);
 					sourceConnection.connect();
 					destinationConnection.connect();
 					
@@ -245,7 +253,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.15|start");
+			logger.info("imapCopy|1.16|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWork();
 			final long endTime=System.currentTimeMillis();
