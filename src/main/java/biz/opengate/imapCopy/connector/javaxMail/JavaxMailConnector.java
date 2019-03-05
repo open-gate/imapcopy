@@ -22,6 +22,7 @@ import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.Store;
 import javax.mail.internet.MimeMessage;
+import javax.mail.search.AndTerm;
 import javax.mail.search.MessageIDTerm;
 import javax.mail.search.ReceivedDateTerm;
 
@@ -59,7 +60,7 @@ public class JavaxMailConnector extends MailServerConnector {
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	OVERRIDES
-
+		
 	@Override
 	public void connect() throws MessagingException {
 		Properties props = System.getProperties();
@@ -147,6 +148,48 @@ public class JavaxMailConnector extends MailServerConnector {
 		try {
 			folder.open(Folder.READ_ONLY);
 			Message[] childMessages = getChildMessages(folder, maxMessageAgeDays);
+			logger.info("getMessages|"+folder.getFullName()+"|"+childMessages.length+" messages");
+			prefetchMessageIds(folder, childMessages);
+
+			for (Message childMessage: childMessages) {
+				MessageMeta mm=new JavaxMailMessageMeta(childMessage);
+				if (mm.getMessageId()==null) continue;
+				boolean wasNotPresent = idToIgnore.add(mm.getMessageId());
+				if (wasNotPresent) {				
+					result.add(mm);
+				}
+			}
+		}
+		finally {				
+			folder.close();
+		}
+				
+		return result;
+	}
+	
+	@Override
+	public HashSet<MessageMeta> getMessages(String folderPath, Date day, HashSet<String> idToIgnore) throws Exception {
+		JavaxMailFolderMeta folderMeta = getFolder(folderPath);
+		Folder folder=folderMeta.getFolder();
+
+		HashSet<MessageMeta> result=new HashSet<MessageMeta>();
+
+		if (ImapCopy.isVerbose()) {
+			logger.info("getMessages|"+folder.getFullName());
+		}
+		
+		if (!canHoldMessages(folder)) {
+			return result;
+		}
+		
+		try {
+			folder.open(Folder.READ_ONLY);
+			
+			ReceivedDateTerm termGreater=new ReceivedDateTerm(javax.mail.search.ComparisonTerm.GE,day);
+			ReceivedDateTerm termLower=new ReceivedDateTerm(javax.mail.search.ComparisonTerm.LE,day);
+			AndTerm termAnd=new AndTerm(termGreater, termLower);
+			Message[] childMessages = folder.search(termAnd);
+			
 			logger.info("getMessages|"+folder.getFullName()+"|"+childMessages.length+" messages");
 			prefetchMessageIds(folder, childMessages);
 
@@ -329,5 +372,12 @@ public class JavaxMailConnector extends MailServerConnector {
 	
 	private Session getSession() {
 		return session;
+	}
+
+	@Override
+	public String getDescription() {
+		final String host=getConfiguration().get("mail.imap.host").getAsString();
+		final String username=getConfiguration().get("mail.imap.user").getAsString();
+		return host+"."+username;
 	}
 }

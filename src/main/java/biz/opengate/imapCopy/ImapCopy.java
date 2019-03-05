@@ -3,6 +3,7 @@ package biz.opengate.imapCopy;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.util.Date;
 import java.util.HashSet;
 
 import javax.mail.MessagingException;
@@ -13,7 +14,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,6 +30,7 @@ import biz.opengate.imapCopy.connector.MessageMeta;
 import biz.opengate.imapCopy.connector.RawMessage;
 import biz.opengate.imapCopy.connector.gmailApi.GmailApiConnector;
 import biz.opengate.imapCopy.connector.javaxMail.JavaxMailConnector;
+import biz.opengate.imapCopy.status.StatusUtilities;
 
 public class ImapCopy {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +74,11 @@ public class ImapCopy {
             option = new Option("d", "maxMessageAgeDays", true, "max day age of messages (if not set all messages will be parsed)");
             option.setRequired(false);
             options.addOption(option);
-                
+            
+            option = new Option("s", "statusFilesDir", true, "directory where status file will be saved");
+            option.setRequired(true);
+            options.addOption(option);
+        
         	CommandLineParser parser = new DefaultParser();
         	CommandLine cmd = parser.parse(options, args);
             
@@ -84,10 +89,11 @@ public class ImapCopy {
             }
             
             configurationFile=new File(cmd.getOptionValue("config"));
+            StatusUtilities.setStatusFilesDir(cmd.getOptionValue("statusFilesDir"));
             
    			logger.info("arguments|verbose: "+verbose+"|maxMessageAgeDays: "+maxMessageAgeDays+"|configurationFile: "+configurationFile.getAbsolutePath());
         } 
-        catch (ParseException e) {
+        catch (Exception e) {
             System.out.println(e.getMessage());
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp("imapCopy", options);
@@ -98,7 +104,9 @@ public class ImapCopy {
 	public void doWork() throws Exception {		
 		sourceConnection=getConnector("source");
 		destinationConnection=getConnector("destination");
-
+		StatusUtilities.setStatusFileName(sourceConnection.getDescription()+"-"+destinationConnection.getDescription()+".json");
+		StatusUtilities.load();
+				
 		logger.info("doWork|reading source folders");
 		sourceConnection.connect();
 		HashSet<String> allFoldersPaths = sourceConnection.getAllFoldersPaths();		
@@ -106,27 +114,48 @@ public class ImapCopy {
 		
 		HashSet<String> idToIgnore=new HashSet<String>();
 		
+		Date startDate=Utilities.stripTimeData(new Date());
+		Date endDate=Utilities.newDate(2015,1,1);
+		if (maxMessageAgeDays!=null) {
+			endDate=Utilities.addDays(startDate, -maxMessageAgeDays);
+		}
+		Date currentDay=startDate;
+		
+		while (currentDay.after(endDate)) {
+			doDate(currentDay,allFoldersPaths,idToIgnore);
+			currentDay=Utilities.addDays(currentDay, -1);
+		}
+	}
+	
+	private void doDate(Date currentDay, HashSet<String> allFoldersPaths, HashSet<String> idToIgnore) throws Exception {
 		for (String sourcePath: allFoldersPaths) {
-			sourceConnection.connect();			
-			HashSet<MessageMeta> messageSet=sourceConnection.getMessages(sourcePath,maxMessageAgeDays,idToIgnore);
-			sourceConnection.disconnect();
-			
-			if (messageSet.isEmpty()) {
+			if (StatusUtilities.isCompleted(currentDay, sourcePath)) {
+				logger.info("doDate|date:"+Utilities.formatDate(currentDay)+"|folder:"+sourcePath+"|alreadyDone");
 				continue;
 			}
-		
-			final MessageMeta messageMeta = Utilities.getFirst(messageSet);
-			final FolderMeta folderMeta = messageMeta.getFolderMeta();
-
-			destinationConnection.connect();
-			destinationConnection.generatePathIfInexistent(folderMeta.getPathList());
-			destinationConnection.disconnect();			
-
+			
+			logger.info("doDate|date:"+Utilities.formatDate(currentDay)+"|folder:"+sourcePath);
+			
 			sourceConnection.connect();
-			destinationConnection.connect();
-			appendMessages(folderMeta, messageSet);
+			HashSet<MessageMeta> messageSet=sourceConnection.getMessages(sourcePath,currentDay,idToIgnore);
 			sourceConnection.disconnect();
-			destinationConnection.disconnect();
+			
+			if (!messageSet.isEmpty()) {
+				final MessageMeta messageMeta = Utilities.getFirst(messageSet);
+				final FolderMeta folderMeta = messageMeta.getFolderMeta();
+	
+				destinationConnection.connect();
+				destinationConnection.generatePathIfInexistent(folderMeta.getPathList());
+				destinationConnection.disconnect();			
+	
+				sourceConnection.connect();
+				destinationConnection.connect();
+				appendMessages(folderMeta, messageSet);
+				sourceConnection.disconnect();
+				destinationConnection.disconnect();
+			}
+			
+			StatusUtilities.setCompleted(currentDay, sourcePath);
 		}
 	}
 
@@ -137,7 +166,7 @@ public class ImapCopy {
 		int copied=0;
 		int ignored=0;
 		int failed=0;
-		long lastLogTime=0;		
+		long lastLogTime=0;
 				
 		for (MessageMeta sourceMessageMeta: sourceMessageList) {
 			///////////////////////////////////////////////////////////////////
@@ -210,7 +239,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.10|start");
+			logger.info("imapCopy|1.12|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWork();
 			final long endTime=System.currentTimeMillis();

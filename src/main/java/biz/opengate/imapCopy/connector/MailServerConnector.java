@@ -1,5 +1,6 @@
 package biz.opengate.imapCopy.connector;
 
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 
@@ -29,11 +30,13 @@ public abstract class MailServerConnector {
 	 * @return
 	 */
 	public abstract HashSet<MessageMeta> getMessages(String folderPath, Integer maxMessageAgeDays, HashSet<String> idToIgnore) throws Exception;
+	public abstract HashSet<MessageMeta> getMessages(String folderPath, Date day, HashSet<String> idToIgnore) throws Exception;
 	public abstract boolean checkMessageByMessageId(String messageId) throws Exception;
 	public abstract void generatePathIfInexistent(List<String> path) throws Exception;
 	public abstract RawMessage getRawMessage(MessageMeta messageMeta) throws Exception;
 	public abstract void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws Exception;
 	public abstract FolderMeta getFolder(List<String> path) throws Exception;
+	public abstract String getDescription();
 
 
 	////////////////////////////////////////////////////////////////////////////////////////

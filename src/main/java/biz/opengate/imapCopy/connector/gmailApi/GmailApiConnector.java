@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -121,6 +122,11 @@ public class GmailApiConnector extends MailServerConnector {
 		}
 		
 		return result;
+	}
+
+	@Override
+	public HashSet<MessageMeta> getMessages(String folderPath, Date day, HashSet<String> idToIgnore) throws Exception {
+		throw new UnsupportedOperationException();
 	}
 	
 	@Override
@@ -328,5 +334,11 @@ public class GmailApiConnector extends MailServerConnector {
         }
         
         return result;
+	}
+	
+	@Override
+	public String getDescription() {
+		final String username=getConfiguration().get("mail.imap.user").getAsString();
+		return "gmail."+username;
 	}
 }
