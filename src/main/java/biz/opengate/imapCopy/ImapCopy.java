@@ -1,8 +1,7 @@
 package biz.opengate.imapCopy;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
+import java.io.IOException;
 import java.util.Date;
 import java.util.HashSet;
 
@@ -18,10 +17,8 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 
 import biz.opengate.imapCopy.connector.FolderMeta;
@@ -43,16 +40,14 @@ public class ImapCopy {
 	private static boolean verbose;
 	private Integer maxMessageAgeDays;
 	private File configurationFile;
+	private long onErrorPauseTimeSec=5*60;
 	private JsonObject configuration;
 	private MailServerConnector sourceConnection;
 	private MailServerConnector destinationConnection;
-	private long onErrorPauseTimeSec=5*60;
-			
-	public ImapCopy(String[] args) throws MessagingException, JsonIOException, JsonSyntaxException, FileNotFoundException {
+
+	public ImapCopy(String[] args) throws MessagingException, JsonIOException, JsonSyntaxException, IOException {
 		parseArguments(args);
-		JsonParser parser = new JsonParser();
-		JsonElement jsonElement = parser.parse(new FileReader(configurationFile));
-		configuration = jsonElement.getAsJsonObject();
+		configuration=Utilities.unmarshall(configurationFile, JsonObject.class);
 	}
 
 	
@@ -107,6 +102,20 @@ public class ImapCopy {
             formatter.printHelp("imapCopy", options);
             System.exit(1);
         }
+	}
+	
+	public void doWorkSafe() {
+		while (true) {
+			try {
+				doWork();		
+				return;
+			}
+			catch (Exception e) {
+				logger.log(Level.WARN, "doWorkSafe|doWorkDied|sleeping", e);
+				try {Thread.sleep(5*60*1000);} catch (Exception ex) {}
+				logger.log(Level.WARN, "doWorkSafe|doWorkDied|restart", e);
+			}
+		}
 	}
 	
 	public void doWork() throws Exception {		
@@ -253,9 +262,9 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.17|start");
+			logger.info("imapCopy|1.19|start");
 			ImapCopy imapCopy = new ImapCopy(args);
-			imapCopy.doWork();
+			imapCopy.doWorkSafe();
 			final long endTime=System.currentTimeMillis();
 			logger.info("imapCopy|done|"+(endTime-startTime)+" ms");
 		}

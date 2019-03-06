@@ -45,6 +45,9 @@ public class StatusUtilities {
 		}
 		status=Utilities.unmarshall(getStatusFile(), Status.class);
 		initialExecutionTimeMs=status.getTotalExecutionTimeMs();
+
+		//save a copy, in case the program dies mid save...
+		Utilities.marshall(getOldStatusFile(), status);
 	}
 	
 	private static void save() throws FileNotFoundException {
@@ -56,7 +59,11 @@ public class StatusUtilities {
 	private static File getStatusFile() {
 		return new File(statusFilesDir,statusFileName);
 	}
-	
+
+	private static File getOldStatusFile() {
+		return new File(statusFilesDir,statusFileName+".old");
+	}
+
 	public static void setStatusFilesDir(String dir) throws Exception {
 		statusFilesDir=new File(dir);
         if (!statusFilesDir.exists()) {
