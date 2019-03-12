@@ -222,11 +222,19 @@ public class GmailApiConnector extends MailServerConnector {
 			service.users().labels().create("me",label).execute();
 		}
 		catch (GoogleJsonResponseException e) {
-			if (!e.getContent().contains("Invalid label name")) {
-				throw e;
+			String content="";
+			if (e.getContent()!=null) content=e.getContent();
+			content=content.toLowerCase();
+						
+			if (content.contains("invalid label name")) {
+				throw new ReservedFolderNameException(e);	
 			}
 			
-			throw new ReservedFolderNameException(e);
+			if (content.contains("label name exists or conflicts")) {
+				throw new ReservedFolderNameException(e);	
+			}
+						
+			throw e;
 		}
 	}
 	
