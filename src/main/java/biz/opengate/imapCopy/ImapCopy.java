@@ -262,7 +262,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.19|start");
+			logger.info("imapCopy|1.20|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWorkSafe();
 			final long endTime=System.currentTimeMillis();

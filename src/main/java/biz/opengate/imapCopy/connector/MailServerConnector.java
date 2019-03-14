@@ -37,6 +37,7 @@ public abstract class MailServerConnector {
 	public abstract void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws Exception;
 	public abstract FolderMeta getFolder(List<String> path) throws Exception;
 	public abstract String getDescription();
+	public abstract void debugLogMessageByMessageId(String messageId) throws Exception;
 
 
 	////////////////////////////////////////////////////////////////////////////////////////

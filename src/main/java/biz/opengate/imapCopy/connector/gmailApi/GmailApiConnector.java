@@ -130,11 +130,21 @@ public class GmailApiConnector extends MailServerConnector {
 	}
 	
 	@Override
+	public void debugLogMessageByMessageId(String messageId) throws Exception {
+		Message message=fetchSingleMessage(messageId); 
+		if (message==null) {
+			logger.info("message not found");
+		}
+		else {
+			Message reloadedMessage=service.users().messages().get("me", message.getId()).execute();
+			GmailApiMessageMeta meta=new GmailApiMessageMeta(reloadedMessage);
+			debugLogMessage(meta);
+		}		
+	}
+	
+	@Override
 	public boolean checkMessageByMessageId(String messageId) throws IOException {
-		final String query="rfc822msgid:"+messageId;
-		ListMessagesResponse response = service.users().messages().list("me").setQ(query).execute();
-		List<Message> messages = response.getMessages();
-		return (messages!=null) && (!messages.isEmpty());
+		return fetchSingleMessage(messageId)!=null;
 	}
 
 	@Override
@@ -204,6 +214,15 @@ public class GmailApiConnector extends MailServerConnector {
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	PRIVATE UTILITIES
 	
+	private Message fetchSingleMessage(String messageId) throws IOException {
+		final String query="rfc822msgid:"+messageId;
+		ListMessagesResponse response = service.users().messages().list("me").setQ(query).execute();
+		List<Message> messages = response.getMessages();
+		if (messages==null) return null;
+		if (messages.isEmpty()) return null;
+		return messages.get(0);
+	}
+
 	private void generateLabel(List<String> path, int depth) throws Exception {
 		try {
 			List<String> tmp=new ArrayList<String>(depth+1);
@@ -224,6 +243,7 @@ public class GmailApiConnector extends MailServerConnector {
 		catch (GoogleJsonResponseException e) {
 			String content="";
 			if (e.getContent()!=null) content=e.getContent();
+			logger.warn("generateLabel|content:"+content);
 			content=content.toLowerCase();
 						
 			if (content.contains("invalid label name")) {
@@ -238,11 +258,18 @@ public class GmailApiConnector extends MailServerConnector {
 		}
 	}
 	
-	@SuppressWarnings("unused")
 	private void debugLogMessage(GmailApiMessageMeta messageMeta) {
 		Message message = messageMeta.getMessage();
 
 		logger.info("-----------------------------------");
+		logger.info("----------------------");
+		logger.info("Labels:");		
+		List<String> labelIds = messageMeta.getMessage().getLabelIds();
+		for (String label: labelIds) {
+			logger.info(label); 
+			
+		}		
+		logger.info("----------------------");
 		logger.info("----------------------");
 		logger.info("EntrySet:");
 		try {

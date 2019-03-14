@@ -211,31 +211,24 @@ public class JavaxMailConnector extends MailServerConnector {
 				
 		return result;
 	}
+	
+	@Override
+	public void debugLogMessageByMessageId(String messageId) throws Exception {
+		Message message=fetchSingleMessage(messageId); 
+		if (message==null) {
+			logger.info("message not found");
+		}
+		else {
+			JavaxMailMessageMeta meta=new JavaxMailMessageMeta(message);
+			debugLogMessage(meta);
+		}		
+	}	
 		
 	@Override
 	public boolean checkMessageByMessageId(String messageId) throws MessagingException {
-		Stack<Folder> stack=new Stack<Folder>();
-		stack.push(getRoot());
-				
-		while (!stack.isEmpty()) {
-			Folder folder=stack.pop();
-			pushAllChildren(folder,stack);
-			
-			if (canHoldMessages(folder)) {
-				try {
-					folder.open(Folder.READ_ONLY);
-					Message[] search = folder.search(new MessageIDTerm(messageId));
-					if (search!=null && search.length!=0) return true;
-				}
-				finally {				
-					folder.close();
-				}
-			}
-		}
-		
-		return false;
+		return fetchSingleMessage(messageId)!=null;
 	}
-			
+
 	@Override
 	public void generatePathIfInexistent(List<String> path) throws MessagingException {
 		JavaxMailFolderMeta destinationFolderMeta=getFolder(path);
@@ -309,13 +302,35 @@ public class JavaxMailConnector extends MailServerConnector {
 	
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	//	PRIVATE UTILITIES
-	
+
+	private Message fetchSingleMessage(String messageId) throws MessagingException {
+		Stack<Folder> stack=new Stack<Folder>();
+		stack.push(getRoot());
+				
+		while (!stack.isEmpty()) {
+			Folder folder=stack.pop();
+			pushAllChildren(folder,stack);
+			
+			if (canHoldMessages(folder)) {
+				try {
+					folder.open(Folder.READ_ONLY);
+					Message[] search = folder.search(new MessageIDTerm(messageId));
+					if (search!=null && search.length!=0) return search[0];
+				}
+				finally {				
+					folder.close();
+				}
+			}
+		}
+		
+		return null;
+	}
+
 	private JavaxMailFolderMeta getFolder(String folderCompletePath) throws MessagingException {
 		List<String> pathList=Arrays.asList(folderCompletePath.split("/"));
 		return getFolder(pathList);
 	}
 	
-	@SuppressWarnings("unused")
 	private void debugLogMessage(JavaxMailMessageMeta messageMeta) throws MessagingException {
 		Message msg=messageMeta.getMessage();
 		msg.getFolder().open(Folder.READ_ONLY);
