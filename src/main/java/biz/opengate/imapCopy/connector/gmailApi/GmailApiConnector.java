@@ -154,8 +154,12 @@ public class GmailApiConnector extends MailServerConnector {
 				generateLabel(path,depth);
 			}
 			catch (ReservedFolderNameException e) {
-				logger.debug("generatePathIfInexistent|reserved folder name|"+path.get(depth));
-				path.set(depth, "IMAP_"+path.get(depth));
+				String pathElement=path.get(depth);
+				logger.debug("generatePathIfInexistent|reserved folder name|"+pathElement);
+				pathElement="IMAP_"+pathElement;
+				pathElement=Utilities.replace(pathElement, " ", "_");
+				pathElement=Utilities.replace(pathElement, "\t", "_");
+				path.set(depth, pathElement);
 				generateLabel(path,depth);
 			}
 		}

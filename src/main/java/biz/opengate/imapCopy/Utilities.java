@@ -19,6 +19,17 @@ import com.google.gson.JsonParser;
 public class Utilities {
 	public static final String MESSAGE_ID_HEADER_NAME="Message-ID";
 	
+	public static String replace(String text, String pattern, String substitution) {
+		int position=0;
+
+		while (true) {
+			position=text.indexOf(pattern,position);
+			if (position==-1) return text;
+			text=text.substring(0,position)+substitution+text.substring(position+pattern.length(),text.length());
+			position=position+substitution.length();
+		}
+	}
+
 	public static <T> T getFirst(HashSet<T> messageSet) {
 		Iterator<T> iterator = messageSet.iterator();
 		if (!iterator.hasNext()) {
