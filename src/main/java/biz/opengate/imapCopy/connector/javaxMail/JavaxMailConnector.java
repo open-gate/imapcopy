@@ -271,6 +271,10 @@ public class JavaxMailConnector extends MailServerConnector {
 
 			RawMessage result=new RawMessage();
 			result.setRaw(baos.toByteArray());
+			if (result.getRaw()==null) {
+				logger.info("getRawMessageReload|nullRawMessage");
+			}
+			
 			return result;
 		}
 		finally {

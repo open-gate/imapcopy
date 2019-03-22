@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 
 import javax.mail.MessagingException;
 
@@ -162,14 +163,20 @@ public class ImapCopy {
 				
 				final MessageMeta messageMeta = Utilities.getFirst(messageSet);
 				final FolderMeta folderMeta = messageMeta.getFolderMeta();
-	
+
+				///////////////////////////////////////////////////////////////
+				//	ALL MESSAGES ARE COPIED INTO A SUBFOLDER OF ImapCopy
+				final List<String> destPathList = folderMeta.getPathList();
+				destPathList.add(0, "ImapCopy");
+				///////////////////////////////////////////////////////////////
+				
 				destinationConnection.connect();
-				destinationConnection.generatePathIfInexistent(folderMeta.getPathList());
+				destinationConnection.generatePathIfInexistent(destPathList);
 				destinationConnection.disconnect();			
 	
 				sourceConnection.connect();
 				destinationConnection.connect();
-				appendMessages(folderMeta, messageSet);
+				appendMessages(destPathList, messageSet);
 				sourceConnection.disconnect();
 				destinationConnection.disconnect();
 			}
@@ -178,8 +185,8 @@ public class ImapCopy {
 		}
 	}
 
-	private void appendMessages(FolderMeta sourceFolder, HashSet<MessageMeta> sourceMessageList) throws Exception {
-		final FolderMeta destinationFolderMeta=destinationConnection.getFolder(sourceFolder.getPathList());
+	private void appendMessages(List<String> destPathList, HashSet<MessageMeta> sourceMessageList) throws Exception {
+		final FolderMeta destinationFolderMeta=destinationConnection.getFolder(destPathList);
 		final int total=sourceMessageList.size();
 		int index=0;
 		int copied=0;
@@ -262,7 +269,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.21|start");
+			logger.info("imapCopy|1.22|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWorkSafe();
 			final long endTime=System.currentTimeMillis();
