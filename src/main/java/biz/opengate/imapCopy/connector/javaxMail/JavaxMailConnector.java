@@ -3,6 +3,7 @@ package biz.opengate.imapCopy.connector.javaxMail;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
@@ -47,6 +48,10 @@ public class JavaxMailConnector extends MailServerConnector {
 	//	DEFINITION
 
 	private static final Logger logger = LogManager.getLogger();
+	
+	private enum WorkMode {
+		FAST,SAFE;
+	}
 	
 	private static ByteArrayOutputStream baos=new ByteArrayOutputStream(1024);
 	private static Message[] dummyMessageArray=new Message[1];
@@ -256,32 +261,59 @@ public class JavaxMailConnector extends MailServerConnector {
 	
 	@Override
 	public RawMessage getRawMessage(MessageMeta messageMeta) throws IOException, MessagingException {
-		logger.debug("getRawMessageReload|"+messageMeta.getMessageId());
-		final JavaxMailMessageMeta casted=(JavaxMailMessageMeta) messageMeta;
-		
-		Folder folder=casted.getMessage().getFolder();
-		folder=getFolder(folder.getFullName()).getFolder();										//reload the folder (slower but mandatory)
-		
-		try {
-			folder.open(Folder.READ_ONLY);
+		List<WorkMode> modes=new ArrayList<WorkMode>(2);
+		modes.add(WorkMode.FAST);			//fast must be executed first
+		modes.add(WorkMode.SAFE);
 
-			Message[] search = folder.search(new MessageIDTerm(casted.getMessageId()));			//reload the message (slower but mandatory)
-			baos.reset();
-			search[0].writeTo(baos);
-
-			RawMessage result=new RawMessage();
-			result.setRaw(baos.toByteArray());
-			if (result.getRaw()==null) {
-				logger.info("getRawMessageReload|nullRawMessage");
+		for (WorkMode mode: modes) {
+			logger.debug("getRawMessageReload|mode:"+mode+"|messageId:"+messageMeta.getMessageId());
+			final JavaxMailMessageMeta casted=(JavaxMailMessageMeta) messageMeta;
+			
+			Folder folder=casted.getMessage().getFolder();
+			
+			if (mode==WorkMode.SAFE) {
+				folder=getFolder(folder.getFullName()).getFolder();										//reload the folder	
 			}
 			
-			return result;
-		}
-		finally {
-			folder.close();
-		}
-	}
+			try {
+				folder.open(Folder.READ_ONLY);
+				
+				Message[] search=null;
+
+				switch (mode) {
+					case FAST:
+						search = new Message[1];
+						search[0]=casted.getMessage();
+					break;
+					case SAFE:
+						search = folder.search(new MessageIDTerm(casted.getMessageId()));			//reload the message (slower but mandatory)
+					break;
+				}
+
+				baos.reset();
+				search[0].writeTo(baos);
 	
+				RawMessage result=new RawMessage();
+				result.setRaw(baos.toByteArray());
+				if (result.getRaw()==null) {
+					logger.info("getRawMessageReload|nullRawMessage");
+				}
+				
+				return result;
+			}
+			catch (Exception e) {
+				if (mode==WorkMode.SAFE) {
+					throw e; 
+				}
+			}			
+			finally {
+				folder.close();
+			}
+		}
+		
+		throw new MessagingException();
+	}
+		
 	@Override
 	public void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws MessagingException {
 		JavaxMailFolderMeta casted=(JavaxMailFolderMeta) destinationFolderMeta;

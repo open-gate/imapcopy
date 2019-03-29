@@ -171,7 +171,7 @@ public class ImapCopy {
 				///////////////////////////////////////////////////////////////
 				
 				destinationConnection.connect();
-				destinationConnection.generatePathIfInexistent(destPathList);
+				destinationConnection.generatePathIfInexistent(destPathList);		//note: destPathList elements might be changed if some name is reserved
 				destinationConnection.disconnect();			
 	
 				sourceConnection.connect();
@@ -269,7 +269,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.22|start");
+			logger.info("imapCopy|1.23|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWorkSafe();
 			final long endTime=System.currentTimeMillis();
