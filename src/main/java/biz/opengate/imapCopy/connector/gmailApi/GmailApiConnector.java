@@ -202,6 +202,8 @@ public class GmailApiConnector extends MailServerConnector {
 
 	@Override
 	public void appendRawMessage(RawMessage raw, FolderMeta destinationFolderMeta, String messageId) throws Exception {
+		logger.info("appendRawMessage|bytes:"+raw.getRaw().length+"|messageId:"+messageId);
+		
 		GmailApiFolderMeta casted=(GmailApiFolderMeta) destinationFolderMeta;
 		Message message = new Message();
 		message.encodeRaw(raw.getRaw());
