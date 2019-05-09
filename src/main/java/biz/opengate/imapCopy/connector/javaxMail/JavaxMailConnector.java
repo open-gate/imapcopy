@@ -202,6 +202,17 @@ public class JavaxMailConnector extends MailServerConnector {
 			prefetchMessageIds(folder, childMessages);
 
 			for (Message childMessage: childMessages) {
+				///////////////////////////////////////////////////////////////
+				//	FILTERS
+				{
+					final String formatAddresses = Utilities.formatAddresses(childMessage.getFrom());
+					if ("antispam@welcomeitalia.it".equals(formatAddresses)) {
+						logger.info("getMessages|skippingAntispamMessage");
+						continue;
+					}
+				}
+				///////////////////////////////////////////////////////////////
+				
 				MessageMeta mm=new JavaxMailMessageMeta(childMessage);
 				if (mm.getMessageId()==null) continue;
 				boolean wasNotPresent = idToIgnore.add(mm.getMessageId());
