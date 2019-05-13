@@ -207,7 +207,9 @@ public class JavaxMailConnector extends MailServerConnector {
 				{
 					final String formatAddresses = Utilities.formatAddresses(childMessage.getFrom());
 					if ("antispam@welcomeitalia.it".equals(formatAddresses)) {
-						logger.info("getMessages|skippingAntispamMessage");
+						if (ImapCopy.isVerbose()) {
+							logger.info("getMessages|skippingAntispamMessage");
+						}
 						continue;
 					}
 				}
