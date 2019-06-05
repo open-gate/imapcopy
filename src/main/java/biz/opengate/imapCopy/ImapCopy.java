@@ -200,9 +200,7 @@ public class ImapCopy {
 			//	COPY THE MESSAGE
 			for (int retry=0; retry<COPY_RETRY_COUNT; retry++) {
 				try {
-					if (retry!=0) {
-						logger.info("appendMessages|"+sourceMessageMeta.getMessageId()+"|retry: "+retry);
-					}
+					logger.info("appendMessages|"+sourceMessageMeta.getMessageId()+"|retry: "+retry);
 										
 					if (destinationConnection.checkMessageByMessageId(sourceMessageMeta.getMessageId())) {
 						ignored++;
@@ -269,7 +267,7 @@ public class ImapCopy {
     public static void main(String[] args) {
 		try {
 			final long startTime=System.currentTimeMillis();
-			logger.info("imapCopy|1.27|start");
+			logger.info("imapCopy|1.28|start");
 			ImapCopy imapCopy = new ImapCopy(args);
 			imapCopy.doWorkSafe();
 			final long endTime=System.currentTimeMillis();
