@@ -20,6 +20,11 @@ public class StatusUtilities {
 	
 	public static void setCompleted(Date date, String folder) throws FileNotFoundException {
 		final int dateInt=DateUtilities.getYearMonthDay(date);
+		final int todayInt=DateUtilities.getYearMonthDay(new Date());
+		if (dateInt==todayInt) {
+			return;
+		}
+		
 		StatusElement element=new StatusElement();
 		element.setDate(dateInt);
 		element.setFolder(folder);
