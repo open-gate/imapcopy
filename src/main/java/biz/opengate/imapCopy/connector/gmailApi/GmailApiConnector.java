@@ -211,10 +211,20 @@ public class GmailApiConnector extends MailServerConnector {
 		message.encodeRaw(raw.getRaw());
 		message.setLabelIds(Arrays.asList(casted.getLabel().getId()));
 		
-		service.users().messages().gmailImport("me",message)
-			.setInternalDateSource("dateHeader")								//do not add a gmail Received header
-			.execute();
-		
+		try {
+			service.users().messages().gmailImport("me",message)
+				.setInternalDateSource("dateHeader")								//do not add a gmail Received header
+				.execute();
+		}
+		catch (Exception e) {
+			if (Utilities.exceptionMessageContains(e,"Error writing request body to server")) {
+				logger.info("appendRawMessage|Error writing request body to server|ignoring");
+				return;
+			}
+			
+			throw e;
+		}
+
 //		message = service.users().messages().insert("me", message).execute();	//sets incorrect Received header
 	}
 	

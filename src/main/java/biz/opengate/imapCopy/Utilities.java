@@ -62,6 +62,26 @@ public class Utilities {
 		}
 		return s;
 	}
+	
+	public static boolean exceptionMessageContains(Exception e, String s) {
+		String exceptionMessage=exceptionToString(e);
+		if (exceptionMessage==null) exceptionMessage="";
+		exceptionMessage=exceptionMessage.toLowerCase();
+		s=s.toLowerCase();
+		return exceptionMessage.contains(s);
+	}
+
+	public static String exceptionToString(Exception e) {
+		String message=null;
+		if (e!=null) {
+			message=e.getMessage();
+			if (message==null) message=e.toString();
+		}
+		if (message==null) {
+			message="java.lang.Exception";
+		}
+		return message;
+	}
 
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////

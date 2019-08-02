@@ -205,7 +205,18 @@ public class JavaxMailConnector extends MailServerConnector {
 				///////////////////////////////////////////////////////////////
 				//	FILTERS
 				{
-					final String formatAddresses = Utilities.formatAddresses(childMessage.getFrom());
+					final String formatAddresses;
+					try {
+						formatAddresses = Utilities.formatAddresses(childMessage.getFrom());
+					}
+					catch (MessagingException e) {
+						if (Utilities.exceptionMessageContains(e,"Failed to load IMAP envelope")) {
+							logger.info("getMessages|Failed to load IMAP envelope|ignoring");
+							continue;
+						}
+						throw e;
+					}
+
 					if ("antispam@welcomeitalia.it".equals(formatAddresses)) {
 						if (ImapCopy.isVerbose()) {
 							logger.info("getMessages|skippingAntispamMessage");
